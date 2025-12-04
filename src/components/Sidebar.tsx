@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { UserButton } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
+import logo from "../assets/logo.svg";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -109,7 +110,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
       if (nav) {
         // Check if there's scrollable content (scrollHeight > clientHeight)
         const hasScroll = nav.scrollHeight > nav.clientHeight;
-        
+
         if (hasScroll) {
           // Check if we're at the bottom (no more content below)
           const isAtBottom = nav.scrollTop + nav.clientHeight >= nav.scrollHeight - 1; // -1 for rounding tolerance
@@ -126,17 +127,17 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
     if (nav) {
       // Check initially
       checkScrollable();
-      
+
       // Check on scroll
       nav.addEventListener('scroll', checkScrollable);
-      
+
       // Check on resize (content might change)
       window.addEventListener('resize', checkScrollable);
-      
+
       // Use ResizeObserver to detect content changes
       const resizeObserver = new ResizeObserver(checkScrollable);
       resizeObserver.observe(nav);
-      
+
       return () => {
         nav.removeEventListener('scroll', checkScrollable);
         window.removeEventListener('resize', checkScrollable);
@@ -161,8 +162,8 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
     <>
       {/* Mobile Overlay */}
       {isMobileOpen && (
-        <div 
-          className="sidebar-overlay" 
+        <div
+          className="sidebar-overlay"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
@@ -175,11 +176,11 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
       >
         {isMobileOpen ? (
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M15 5L5 15M5 5L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         ) : (
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M2.5 5H17.5M2.5 10H17.5M2.5 15H17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M2.5 5H17.5M2.5 10H17.5M2.5 15H17.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         )}
       </button>
@@ -188,6 +189,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
       <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo-link" onClick={() => setIsMobileOpen(false)}>
+            <img src={logo} alt="ProxLock Logo" className="sidebar-logo-icon" />
             <h1 className="sidebar-logo">ProxLock</h1>
           </Link>
         </div>
@@ -199,7 +201,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
             onClick={() => setIsMobileOpen(false)}
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2L3 7V17H8V12H12V17H17V7L10 2Z" fill="currentColor"/>
+              <path d="M10 2L3 7V17H8V12H12V17H17V7L10 2Z" fill="currentColor" />
             </svg>
             <span>Home</span>
           </Link>
@@ -235,7 +237,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
                   >
                     <div className="sidebar-project-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2 4L8 1L14 4V11L8 14L2 11V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 4L8 1L14 4V11L8 14L2 11V4Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                     <div className="sidebar-project-info">
@@ -252,7 +254,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
 
         <div className="sidebar-bottom">
           <div className={`sidebar-user-button ${hasScrollableContent ? 'has-content-above' : ''}`}>
-            <UserButton showName={false}/>
+            <UserButton showName={false} />
             {currentRequestUsage !== null && requestLimit !== null && (
               <div className="sidebar-usage-container">
                 <span className="sidebar-usage-label">Requests</span>
@@ -270,14 +272,14 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
               {isPayingCustomer ? (
                 <>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 1L10.5 5.5L15.5 6.5L12 9.5L12.5 14.5L8 12L3.5 14.5L4 9.5L0.5 6.5L5.5 5.5L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    <path d="M8 1L10.5 5.5L15.5 6.5L12 9.5L12.5 14.5L8 12L3.5 14.5L4 9.5L0.5 6.5L5.5 5.5L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   </svg>
                   <span>Manage Subscription</span>
                 </>
               ) : (
                 <>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 1L10.5 5.5L15.5 6.5L12 9.5L12.5 14.5L8 12L3.5 14.5L4 9.5L0.5 6.5L5.5 5.5L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    <path d="M8 1L10.5 5.5L15.5 6.5L12 9.5L12.5 14.5L8 12L3.5 14.5L4 9.5L0.5 6.5L5.5 5.5L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   </svg>
                   <span>Upgrade</span>
                 </>
