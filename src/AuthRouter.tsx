@@ -55,7 +55,7 @@ export default function AuthRouter() {
         },
         credentials: "include" // optional if using cookies
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         setJustRegistered(data.justRegistered === true);
@@ -88,7 +88,7 @@ export default function AuthRouter() {
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
             <div className="loading-state">
               <div className="spinner"></div>
-              <p>Setting up your account...</p>
+              <p>Loading your account...</p>
             </div>
           </div>
         )}
