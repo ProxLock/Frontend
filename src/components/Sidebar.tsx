@@ -191,6 +191,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
           <Link to="/" className="sidebar-logo-link" onClick={() => setIsMobileOpen(false)}>
             <img src={logo} alt="ProxLock Logo" className="sidebar-logo-icon" />
             <h1 className="sidebar-logo">ProxLock</h1>
+            <span className="sidebar-beta-badge">BETA</span>
           </Link>
         </div>
 

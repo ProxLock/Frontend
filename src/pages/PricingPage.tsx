@@ -11,6 +11,12 @@ export default function PricingPage() {
             Select a plan that fits your needs. Upgrade or downgrade at any time.
           </p>
         </header>
+        <div className="beta-notice-wrapper">
+          <div className="beta-notice">
+            <span className="beta-badge">BETA PRICING</span>
+            Subscribe now to lock in these rates forever.
+          </div>
+        </div>
         <UsageAlert />
         <div className="pricing-table-wrapper">
           <PricingTable />
