@@ -90,7 +90,7 @@ export default function HomePage() {
       }
 
       const newProject = await res.json();
-      
+
       // Refresh projects list
       const projectsRes = await fetch(`${API_URL}/me/projects`, {
         method: "GET",
@@ -152,6 +152,24 @@ export default function HomePage() {
         </p>
       </header>
 
+      {/* Beta Pricing Banner */}
+      <div className="beta-banner">
+        <div className="beta-banner-content">
+          <div className="beta-banner-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 1L12.5 6.5L18.5 7.5L14 11.5L15 17.5L10 14.5L5 17.5L6 11.5L1.5 7.5L7.5 6.5L10 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+          </div>
+          <div className="beta-banner-text">
+            <strong>Beta Pricing Available</strong>
+            <span>Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
+          </div>
+          <Link to="/pricing" className="beta-banner-btn">
+            View Plans
+          </Link>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="homepage-main">
         {loading ? (
@@ -162,8 +180,8 @@ export default function HomePage() {
         ) : error ? (
           <div className="error-state">
             <p className="error-message">{error}</p>
-            <button 
-              className="btn-solid" 
+            <button
+              className="btn-solid"
               onClick={() => {
                 fetchProjects();
                 refreshProjects();
@@ -173,7 +191,7 @@ export default function HomePage() {
             </button>
           </div>
         ) : projects.length === 0 ? (
-            <div className="empty-state">
+          <div className="empty-state">
             <div className="empty-icon">📁</div>
             <h2>No projects yet</h2>
             <p>Get started by creating your first project to manage API keys securely.</p>
