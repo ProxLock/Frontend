@@ -157,6 +157,11 @@ export default function DashboardPage() {
   const [newWhitelistedUrl, setNewWhitelistedUrl] = useState("");
   const [newWhitelistedUrlEdit, setNewWhitelistedUrlEdit] = useState("");
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
+  const [showBulkRateLimitModal, setShowBulkRateLimitModal] = useState(false);
+  const [isClosingBulkRateLimitModal, setIsClosingBulkRateLimitModal] = useState(false);
+  const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
+  const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
+  const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
 
   const handleAddWhitelistedUrl = (isEdit: boolean = false) => {
     const url = isEdit ? newWhitelistedUrlEdit : newWhitelistedUrl;
@@ -817,6 +822,69 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCloseBulkRateLimitModal = () => {
+    setIsClosingBulkRateLimitModal(true);
+    setTimeout(() => {
+      setShowBulkRateLimitModal(false);
+      setIsClosingBulkRateLimitModal(false);
+      setBulkRateLimitEnabled(false);
+      setBulkRateLimitValue(60);
+    }, 300);
+  };
+
+  const handleApplyBulkRateLimit = async () => {
+    if (!projectId || keys.length === 0) return;
+
+    const rateLimit = bulkRateLimitEnabled ? bulkRateLimitValue : null;
+
+    try {
+      setApplyingBulkRateLimit(true);
+      const token = await getToken({ template: "default" });
+
+      // Update all keys in parallel
+      await Promise.all(
+        keys.map((key) =>
+          fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              name: key.name || undefined,
+              description: key.description,
+              whitelistedUrls: key.whitelistedUrls,
+              rateLimit,
+            }),
+          })
+        )
+      );
+
+      // Refresh keys list
+      const keysRes = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (keysRes.ok) {
+        const keysData = await keysRes.json();
+        setKeys(Array.isArray(keysData) ? keysData : []);
+      }
+
+      handleCloseBulkRateLimitModal();
+    } catch (err) {
+      console.error("Error applying bulk rate limit:", err);
+      setErrorToast((err as Error).message || "Failed to apply rate limit. Please try again.");
+    } finally {
+      setApplyingBulkRateLimit(false);
+    }
+  };
+
   if (isNotFound) {
     return <NotFoundPage />;
   }
@@ -877,9 +945,16 @@ export default function DashboardPage() {
         <div className="keys-section">
           <div className="keys-header">
             <h2 className="section-title">API Keys</h2>
-            <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
-              + Add Key
-            </button>
+            <div className="keys-header-actions">
+              {keys.length > 0 && (
+                <button className="btn-secondary" onClick={() => setShowBulkRateLimitModal(true)}>
+                  Set Rate Limit for All
+                </button>
+              )}
+              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+                + Add Key
+              </button>
+            </div>
           </div>
 
           {keys.length === 0 ? (
@@ -1733,6 +1808,76 @@ export default function DashboardPage() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Rate Limit Modal */}
+      {showBulkRateLimitModal && (
+        <div className={`modal-overlay ${isClosingBulkRateLimitModal ? 'closing' : ''}`} onClick={handleCloseBulkRateLimitModal}>
+          <div className={`modal-content ${isClosingBulkRateLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Set Rate Limit for All Keys</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseBulkRateLimitModal}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-form">
+              <div className="form-group">
+                <p className="form-description">
+                  Apply a rate limit to all {keys.length} key{keys.length !== 1 ? 's' : ''} in this project.
+                </p>
+                <div className="rate-limit-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={bulkRateLimitEnabled}
+                      onChange={(e) => setBulkRateLimitEnabled(e.target.checked)}
+                    />
+                    <span className="toggle-label">Enable rate limiting</span>
+                  </label>
+                  {bulkRateLimitEnabled && (
+                    <div className="rate-limit-value-input">
+                      <input
+                        type="number"
+                        id="bulk-rate-limit"
+                        className="form-input"
+                        value={bulkRateLimitValue}
+                        onChange={(e) => setBulkRateLimitValue(parseInt(e.target.value) || 1)}
+                        min={1}
+                        placeholder="60"
+                      />
+                      <span className="rate-limit-unit">requests/min</span>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint">
+                  {bulkRateLimitEnabled
+                    ? `All keys will be limited to ${bulkRateLimitValue} requests per minute.`
+                    : "All keys will have unlimited requests (no rate limit)."}
+                </p>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleCloseBulkRateLimitModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleApplyBulkRateLimit}
+                  disabled={applyingBulkRateLimit}
+                >
+                  {applyingBulkRateLimit ? "Applying..." : "Apply to All Keys"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

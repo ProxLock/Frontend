@@ -981,6 +981,19 @@ body {
   gap: 1rem;
 }
 
+.keys-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.form-description {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-purple-1), var(--accent-purple-2));
   border: none;
