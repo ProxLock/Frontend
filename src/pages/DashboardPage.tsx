@@ -46,14 +46,14 @@ const API_DIRECTORY: Record<string, string[]> = {
 
 const getWhitelistedUrlsFromName = (name: string): string[] => {
   if (!name) return [];
-  
+
   const normalizedName = name.toLowerCase().trim();
-  
+
   // Direct match
   if (API_DIRECTORY[normalizedName]) {
     return API_DIRECTORY[normalizedName];
   }
-  
+
   // Partial match - only if input is at least 3 characters
   // Match if the normalized name starts with a key, or if a key is contained in the name
   if (normalizedName.length >= 3) {
@@ -70,7 +70,7 @@ const getWhitelistedUrlsFromName = (name: string): string[] => {
       }
     }
   }
-  
+
   return [];
 };
 
@@ -94,6 +94,12 @@ interface DeviceCheckKey {
   teamID: string;
   keyID: string;
   bypassToken: string;
+}
+
+interface PlayIntegrityConfig {
+  projectID: string;
+  bypassToken: string;
+  clientEmail: string;
 }
 
 export default function DashboardPage() {
@@ -155,6 +161,19 @@ export default function DashboardPage() {
   const [newWhitelistedUrlEdit, setNewWhitelistedUrlEdit] = useState("");
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
 
+  // Play Integrity state
+  const [playIntegrityConfig, setPlayIntegrityConfig] = useState<PlayIntegrityConfig | null>(null);
+  const [showPlayIntegrityModal, setShowPlayIntegrityModal] = useState(false);
+  const [isClosingPlayIntegrityModal, setIsClosingPlayIntegrityModal] = useState(false);
+  const [playIntegrityServiceAccountJson, setPlayIntegrityServiceAccountJson] = useState("");
+  const [uploadingPlayIntegrity, setUploadingPlayIntegrity] = useState(false);
+  const [isDraggingOverPlayIntegrity, setIsDraggingOverPlayIntegrity] = useState(false);
+  const [playIntegrityModalMode, setPlayIntegrityModalMode] = useState<"upload" | "link">("upload");
+  const [availablePlayIntegrityConfigs, setAvailablePlayIntegrityConfigs] = useState<PlayIntegrityConfig[]>([]);
+  const [loadingAvailablePlayIntegrityConfigs, setLoadingAvailablePlayIntegrityConfigs] = useState(false);
+  const [selectedPlayIntegrityToLink, setSelectedPlayIntegrityToLink] = useState<string>("");
+  const [linkingPlayIntegrity, setLinkingPlayIntegrity] = useState(false);
+
   const handleAddWhitelistedUrl = (isEdit: boolean = false) => {
     const url = isEdit ? newWhitelistedUrlEdit : newWhitelistedUrl;
     if (!url.trim()) return;
@@ -199,12 +218,12 @@ export default function DashboardPage() {
 
   const handleNameChange = (name: string, isEdit: boolean = false) => {
     const autoUrls = getWhitelistedUrlsFromName(name);
-    
+
     if (isEdit) {
       // If name is empty, clear whitelistedUrls
       // If name matches an API, always update whitelistedUrls
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : keyFormData.whitelistedUrls);
-      
+
       setKeyFormData({
         ...keyFormData,
         name,
@@ -214,7 +233,7 @@ export default function DashboardPage() {
       // If name is empty, clear whitelistedUrls
       // If name matches an API, always update whitelistedUrls
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : formData.whitelistedUrls);
-      
+
       setFormData({
         ...formData,
         name,
@@ -228,7 +247,7 @@ export default function DashboardPage() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
-        
+
         // Auto-fill keyID with filename (without extension and AuthKey_ prefix) if keyID is blank
         let newKeyID = deviceCheckFormData.keyID;
         if (!deviceCheckFormData.keyID.trim()) {
@@ -237,12 +256,23 @@ export default function DashboardPage() {
           fileNameWithoutExt = fileNameWithoutExt.replace(/^AuthKey_/i, '');
           newKeyID = fileNameWithoutExt;
         }
-        
-        setDeviceCheckFormData({ 
-          ...deviceCheckFormData, 
+
+        setDeviceCheckFormData({
+          ...deviceCheckFormData,
           privateKey: content.trim(),
           keyID: newKeyID
         });
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handlePlayIntegrityFileRead = (file: File) => {
+    if (file && file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        setPlayIntegrityServiceAccountJson(content.trim());
       };
       reader.readAsText(file);
     }
@@ -260,6 +290,9 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         setIsNotFound(false);
+        // Reset device-specific configs when switching projects
+        setDeviceCheckKey(null);
+        setPlayIntegrityConfig(null);
         const token = await getToken({ template: "default" });
 
         // Fetch project details
@@ -339,6 +372,26 @@ export default function DashboardPage() {
           // Don't set device check key if it fails
         }
 
+        // Fetch Play Integrity config for this project - don't fail the whole page if this fails
+        try {
+          const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+          });
+
+          if (playIntegrityRes.ok) {
+            const playIntegrityData = await playIntegrityRes.json();
+            setPlayIntegrityConfig(playIntegrityData || null);
+          }
+        } catch (playIntegrityError) {
+          console.warn("Error fetching play integrity config:", playIntegrityError);
+          // Don't set play integrity config if it fails
+        }
+
         // Project loaded successfully, set loading to false
         setLoading(false);
       } catch (err) {
@@ -388,7 +441,7 @@ export default function DashboardPage() {
     try {
       setSubmitting(true);
       const token = await getToken({ template: "default" });
-      
+
       const res = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
         method: "POST",
         headers: {
@@ -410,7 +463,7 @@ export default function DashboardPage() {
       }
 
       const newKey = await res.json();
-      
+
       // Show the partial key one time
       if (newKey.userPartialKey) {
         setPartialKeyToShow(newKey.userPartialKey);
@@ -503,7 +556,7 @@ export default function DashboardPage() {
     try {
       setUpdatingProject(true);
       const token = await getToken({ template: "default" });
-      
+
       const res = await fetch(`${API_URL}/me/projects/${projectId}`, {
         method: "PUT",
         headers: {
@@ -719,7 +772,7 @@ export default function DashboardPage() {
 
   const handleDeviceCheckModalModeChange = async (mode: "upload" | "link") => {
     setDeviceCheckModalMode(mode);
-    
+
     if (mode === "link") {
       setLoadingAvailableKeys(true);
       setSelectedKeyToLink("");
@@ -811,6 +864,157 @@ export default function DashboardPage() {
     }
   };
 
+  // Play Integrity handlers
+  const handleUploadPlayIntegrity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId) return;
+
+    try {
+      setUploadingPlayIntegrity(true);
+      const token = await getToken({ template: "default" });
+
+      // Parse the JSON to send it as the request body
+      let jsonBody;
+      try {
+        jsonBody = JSON.parse(playIntegrityServiceAccountJson);
+      } catch {
+        throw new Error("Invalid JSON format. Please provide a valid service account JSON.");
+      }
+
+      const res = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+        body: JSON.stringify(jsonBody),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to upload Play Integrity key: ${res.statusText}`);
+      }
+
+      // Refresh Play Integrity config
+      const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (playIntegrityRes.ok) {
+        const playIntegrityData = await playIntegrityRes.json();
+        setPlayIntegrityConfig(playIntegrityData || null);
+      }
+
+      handleClosePlayIntegrityModal();
+    } catch (err) {
+      console.error("Error uploading Play Integrity key:", err);
+      setErrorToast((err as Error).message || "Failed to upload Play Integrity key. Please try again.");
+    } finally {
+      setUploadingPlayIntegrity(false);
+    }
+  };
+
+  const handleClosePlayIntegrityModal = () => {
+    setIsClosingPlayIntegrityModal(true);
+    setTimeout(() => {
+      setShowPlayIntegrityModal(false);
+      setIsClosingPlayIntegrityModal(false);
+      setPlayIntegrityServiceAccountJson("");
+      setIsDraggingOverPlayIntegrity(false);
+      setPlayIntegrityModalMode("upload");
+      setSelectedPlayIntegrityToLink("");
+      setAvailablePlayIntegrityConfigs([]);
+    }, 300);
+  };
+
+  const handlePlayIntegrityModalModeChange = async (mode: "upload" | "link") => {
+    setPlayIntegrityModalMode(mode);
+
+    if (mode === "link") {
+      setLoadingAvailablePlayIntegrityConfigs(true);
+      setSelectedPlayIntegrityToLink("");
+
+      try {
+        const token = await getToken({ template: "default" });
+        const res = await fetch(`${API_URL}/me/play-integrity`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setAvailablePlayIntegrityConfigs(Array.isArray(data) ? data : []);
+        } else {
+          console.error("Failed to fetch available Play Integrity configs");
+          setAvailablePlayIntegrityConfigs([]);
+        }
+      } catch (err) {
+        console.error("Error fetching available Play Integrity configs:", err);
+        setAvailablePlayIntegrityConfigs([]);
+      } finally {
+        setLoadingAvailablePlayIntegrityConfigs(false);
+      }
+    }
+  };
+
+  const handleLinkPlayIntegrity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId || !selectedPlayIntegrityToLink) return;
+
+    try {
+      setLinkingPlayIntegrity(true);
+      const token = await getToken({ template: "default" });
+
+      const res = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          projectID: selectedPlayIntegrityToLink,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to link Play Integrity config: ${res.statusText}`);
+      }
+
+      // Refresh Play Integrity config
+      const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (playIntegrityRes.ok) {
+        const playIntegrityData = await playIntegrityRes.json();
+        setPlayIntegrityConfig(playIntegrityData || null);
+      }
+
+      handleClosePlayIntegrityModal();
+    } catch (err) {
+      console.error("Error linking Play Integrity config:", err);
+      setErrorToast((err as Error).message || "Failed to link Play Integrity config. Please try again.");
+    } finally {
+      setLinkingPlayIntegrity(false);
+    }
+  };
+
   if (isNotFound) {
     return <NotFoundPage />;
   }
@@ -858,7 +1062,7 @@ export default function DashboardPage() {
               title="Edit project"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13.5 1.5L16.5 4.5L5.25 15.75H1.5V12L13.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M13.5 1.5L16.5 4.5L5.25 15.75H1.5V12L13.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
@@ -898,7 +1102,7 @@ export default function DashboardPage() {
                         title="Edit key"
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M11.5 1.5L14.5 4.5L4.5 14.5H1.5V11.5L11.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M11.5 1.5L14.5 4.5L4.5 14.5H1.5V11.5L11.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
                       <button
@@ -907,10 +1111,10 @@ export default function DashboardPage() {
                         title="Delete key"
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M5.5 5.5C5.77614 5.5 6 5.72386 6 6V12C6 12.2761 5.77614 12.5 5.5 12.5C5.22386 12.5 5 12.2761 5 12V6C5 5.72386 5.22386 5.5 5.5 5.5Z" fill="currentColor"/>
-                          <path d="M8 5.5C8.27614 5.5 8.5 5.72386 8.5 6V12C8.5 12.2761 8.27614 12.5 8 12.5C7.72386 12.5 7.5 12.2761 7.5 12V6C7.5 5.72386 7.72386 5.5 8 5.5Z" fill="currentColor"/>
-                          <path d="M11 6C11 5.72386 10.7761 5.5 10.5 5.5C10.2239 5.5 10 5.72386 10 6V12C10 12.2761 10.2239 12.5 10.5 12.5C10.7761 12.5 11 12.2761 11 12V6Z" fill="currentColor"/>
-                          <path fillRule="evenodd" clipRule="evenodd" d="M10.5 2C10.7761 2 11 2.22386 11 2.5V3H13.5C13.7761 3 14 3.22386 14 3.5C14 3.77614 13.7761 4 13.5 4H12.5V13C12.5 13.8284 11.8284 14.5 11 14.5H5C4.17157 14.5 3.5 13.8284 3.5 13V4H2.5C2.22386 4 2 3.77614 2 3.5C2 3.22386 2.22386 3 2.5 3H5V2.5C5 2.22386 5.22386 2 5.5 2H10.5ZM4.5 4V13C4.5 13.2761 4.72386 13.5 5 13.5H11C11.2761 13.5 11.5 13.2761 11.5 13V4H4.5Z" fill="currentColor"/>
+                          <path d="M5.5 5.5C5.77614 5.5 6 5.72386 6 6V12C6 12.2761 5.77614 12.5 5.5 12.5C5.22386 12.5 5 12.2761 5 12V6C5 5.72386 5.22386 5.5 5.5 5.5Z" fill="currentColor" />
+                          <path d="M8 5.5C8.27614 5.5 8.5 5.72386 8.5 6V12C8.5 12.2761 8.27614 12.5 8 12.5C7.72386 12.5 7.5 12.2761 7.5 12V6C7.5 5.72386 7.72386 5.5 8 5.5Z" fill="currentColor" />
+                          <path d="M11 6C11 5.72386 10.7761 5.5 10.5 5.5C10.2239 5.5 10 5.72386 10 6V12C10 12.2761 10.2239 12.5 10.5 12.5C10.7761 12.5 11 12.2761 11 12V6Z" fill="currentColor" />
+                          <path fillRule="evenodd" clipRule="evenodd" d="M10.5 2C10.7761 2 11 2.22386 11 2.5V3H13.5C13.7761 3 14 3.22386 14 3.5C14 3.77614 13.7761 4 13.5 4H12.5V13C12.5 13.8284 11.8284 14.5 11 14.5H5C4.17157 14.5 3.5 13.8284 3.5 13V4H2.5C2.22386 4 2 3.77614 2 3.5C2 3.22386 2.22386 3 2.5 3H5V2.5C5 2.22386 5.22386 2 5.5 2H10.5ZM4.5 4V13C4.5 13.2761 4.72386 13.5 5 13.5H11C11.2761 13.5 11.5 13.2761 11.5 13V4H4.5Z" fill="currentColor" />
                         </svg>
                       </button>
                     </div>
@@ -931,12 +1135,12 @@ export default function DashboardPage() {
                           >
                             {copiedButtonId === `association-${key.id}` ? (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             ) : (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </button>
@@ -955,12 +1159,12 @@ export default function DashboardPage() {
                           >
                             {copiedButtonId === `keyid-${key.id}` ? (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             ) : (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </button>
@@ -991,16 +1195,16 @@ export default function DashboardPage() {
           <div className="info-alert-content">
             <div className="info-alert-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/>
+                <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor" />
               </svg>
             </div>
             <div className="info-alert-text">
               <strong>Apple Platform Setup Guide</strong>
               <span>
                 Need help setting up for iOS, macOS, or other Apple platforms? Check out our{" "}
-                <a 
-                  href="https://docs.proxlock.dev/ios-sdk/" 
-                  target="_blank" 
+                <a
+                  href="https://docs.proxlock.dev/ios-sdk/"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="info-alert-link"
                 >
@@ -1048,12 +1252,61 @@ export default function DashboardPage() {
                     >
                       {copiedButtonId === 'bypass-token' ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Play Integrity Section */}
+        <div className="playintegrity-section">
+          <div className="playintegrity-header">
+            <h2 className="section-title">Google Play Integrity</h2>
+            <button className="btn-primary" onClick={() => setShowPlayIntegrityModal(true)}>
+              {playIntegrityConfig ? "Update Key" : "+ Upload Play Integrity Key"}
+            </button>
+          </div>
+
+          {!playIntegrityConfig ? (
+            <div className="empty-playintegrity-state">
+              <div className="empty-icon">🤖</div>
+              <h3>No Play Integrity key yet</h3>
+              <p>Upload your Google Cloud service account JSON to enable Play Integrity verification.</p>
+            </div>
+          ) : (
+            <div className="playintegrity-card">
+              <div className="playintegrity-details">
+                <div className="playintegrity-detail-row">
+                  <span className="playintegrity-detail-label">Service Account Email:</span>
+                  <code className="playintegrity-detail-value">{playIntegrityConfig.clientEmail}</code>
+                </div>
+                <div className="playintegrity-detail-row">
+                  <span className="playintegrity-detail-label">Bypass Token:</span>
+                  <div className="playintegrity-value-container">
+                    <code className="playintegrity-detail-value">{playIntegrityConfig.bypassToken}</code>
+                    <button
+                      className={`playintegrity-copy-btn ${copiedButtonId === 'pi-bypass-token' ? 'copied' : ''}`}
+                      onClick={() => handleCopyToClipboard(playIntegrityConfig.bypassToken, 'pi-bypass-token')}
+                      title={copiedButtonId === 'pi-bypass-token' ? "Copied!" : "Copy bypass token"}
+                    >
+                      {copiedButtonId === 'pi-bypass-token' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </button>
@@ -1189,7 +1442,7 @@ export default function DashboardPage() {
                           title="Remove URL"
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       </div>
@@ -1359,7 +1612,7 @@ export default function DashboardPage() {
                           title="Remove URL"
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       </div>
@@ -1394,28 +1647,28 @@ export default function DashboardPage() {
                 This is the only time you'll see your partial key. Copy it now!
               </p>
             </div>
-              <div className="partial-key-content">
-                <label className="form-label">Your Partial Key:</label>
-                <div className="partial-key-display">
-                  <code className="partial-key-value">{partialKeyToShow}</code>
-                </div>
-                <p className="partial-key-instruction">
-                  After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
-                </p>
+            <div className="partial-key-content">
+              <label className="form-label">Your Partial Key:</label>
+              <div className="partial-key-display">
+                <code className="partial-key-value">{partialKeyToShow}</code>
               </div>
-              <div className="partial-key-actions">
-                <button 
-                  className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
-                  onClick={async () => {
-                    await handleCopyToClipboard(partialKeyToShow, 'partial-key');
-                    setTimeout(() => {
-                      handleClosePartialKey();
-                    }, 500);
-                  }}
-                >
-                  {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
-                </button>
-              </div>
+              <p className="partial-key-instruction">
+                After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
+              </p>
+            </div>
+            <div className="partial-key-actions">
+              <button
+                className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
+                onClick={async () => {
+                  await handleCopyToClipboard(partialKeyToShow, 'partial-key');
+                  setTimeout(() => {
+                    handleClosePartialKey();
+                  }, 500);
+                }}
+              >
+                {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1435,7 +1688,7 @@ export default function DashboardPage() {
                 ×
               </button>
             </div>
-            
+
             {/* Mode Toggle */}
             <div className="modal-mode-toggle">
               <button
@@ -1524,7 +1777,7 @@ export default function DashboardPage() {
                         e.preventDefault();
                         e.stopPropagation();
                         setIsDraggingOver(false);
-                        
+
                         const file = e.dataTransfer.files?.[0];
                         if (file) {
                           handleFileRead(file);
@@ -1532,7 +1785,7 @@ export default function DashboardPage() {
                       }}
                     >
                       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <span>{isDraggingOver ? 'Drop Key File Here' : 'Upload Key File'}</span>
                     </label>
@@ -1641,6 +1894,199 @@ export default function DashboardPage() {
                     disabled={linkingKey || !selectedKeyToLink || availableDeviceCheckKeys.length === 0}
                   >
                     {linkingKey ? "Linking..." : "Link Key"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Play Integrity Modal */}
+      {showPlayIntegrityModal && (
+        <div className={`modal-overlay ${isClosingPlayIntegrityModal ? 'closing' : ''}`} onClick={handleClosePlayIntegrityModal}>
+          <div className={`modal-content ${isClosingPlayIntegrityModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {playIntegrityConfig ? "Update Play Integrity Key" : "Upload Play Integrity Key"}
+              </h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleClosePlayIntegrityModal}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="modal-mode-toggle">
+              <button
+                type="button"
+                className={`modal-mode-btn ${playIntegrityModalMode === "upload" ? "active" : ""}`}
+                onClick={() => handlePlayIntegrityModalModeChange("upload")}
+              >
+                Upload New Key
+              </button>
+              <button
+                type="button"
+                className={`modal-mode-btn ${playIntegrityModalMode === "link" ? "active" : ""}`}
+                onClick={() => handlePlayIntegrityModalModeChange("link")}
+              >
+                Link Existing Key
+              </button>
+            </div>
+
+            {playIntegrityModalMode === "upload" ? (
+              <form onSubmit={handleUploadPlayIntegrity} className="modal-form">
+                <div className="form-group">
+                  <label htmlFor="playintegrity-json" className="form-label">
+                    Service Account JSON <span className="required">*</span>
+                  </label>
+                  <div className="file-upload-container">
+                    <input
+                      type="file"
+                      id="playintegrity-file-upload"
+                      accept=".json"
+                      className="file-upload-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handlePlayIntegrityFileRead(file);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="playintegrity-file-upload"
+                      className={`file-upload-label ${isDraggingOverPlayIntegrity ? 'dragging' : ''}`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(false);
+
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          handlePlayIntegrityFileRead(file);
+                        }
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>{isDraggingOverPlayIntegrity ? 'Drop JSON File Here' : 'Upload JSON File'}</span>
+                    </label>
+                  </div>
+                  <textarea
+                    id="playintegrity-json"
+                    className="form-textarea"
+                    value={playIntegrityServiceAccountJson}
+                    onChange={(e) => setPlayIntegrityServiceAccountJson(e.target.value)}
+                    placeholder='{"type": "service_account", "project_id": "...", ...}'
+                    rows={8}
+                    required
+                  />
+                  <p className="form-hint">
+                    Paste your Google Cloud service account JSON here, or upload a .json file.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleClosePlayIntegrityModal}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={uploadingPlayIntegrity || !playIntegrityServiceAccountJson.trim()}>
+                    {uploadingPlayIntegrity ? "Uploading..." : "Upload Key"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleLinkPlayIntegrity} className="modal-form">
+                <div className="form-group">
+                  <label htmlFor="link-playintegrity-select" className="form-label">
+                    Select Key <span className="required">*</span>
+                  </label>
+                  {loadingAvailablePlayIntegrityConfigs ? (
+                    <div className="form-loading">
+                      <div className="spinner"></div>
+                      <span>Loading available keys...</span>
+                    </div>
+                  ) : availablePlayIntegrityConfigs.length === 0 ? (
+                    <div className="form-empty">
+                      <p>No Play Integrity keys available. Please upload a key first.</p>
+                    </div>
+                  ) : (
+                    <div className="custom-key-selector-inline">
+                      {availablePlayIntegrityConfigs.map((config) => {
+                        const keyValue = config.projectID;
+                        const isSelected = selectedPlayIntegrityToLink === keyValue;
+                        return (
+                          <button
+                            key={keyValue}
+                            type="button"
+                            className={`custom-key-selector-option-inline ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSelectedPlayIntegrityToLink(keyValue);
+                            }}
+                          >
+                            <div className="custom-key-option-content">
+                              <div className="custom-key-option-header">
+                                <span className="custom-key-option-label">Client Email</span>
+                                <code className="custom-key-option-value">{config.clientEmail}</code>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="custom-key-option-check"
+                              >
+                                <path
+                                  d="M16 5L7.5 13.5L4 10"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="form-hint">
+                    Select an existing Play Integrity key to link to this project. This will copy the key from your account.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleClosePlayIntegrityModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={linkingPlayIntegrity || !selectedPlayIntegrityToLink || availablePlayIntegrityConfigs.length === 0}
+                  >
+                    {linkingPlayIntegrity ? "Linking..." : "Link Key"}
                   </button>
                 </div>
               </form>
