@@ -89,6 +89,7 @@ interface APIKey {
   associationId?: string;
   whitelistedUrls?: string[];
   rateLimit?: number | null;
+  allowsWeb?: boolean;
 }
 
 interface DeviceCheckKey {
@@ -124,6 +125,7 @@ export default function DashboardPage() {
     apiKey: "",
     whitelistedUrls: [] as string[],
     rateLimit: null as number | null,
+    allowsWeb: false,
   });
   const [projectFormData, setProjectFormData] = useState({
     name: "",
@@ -134,6 +136,7 @@ export default function DashboardPage() {
     description: "",
     whitelistedUrls: [] as string[],
     rateLimit: null as number | null,
+    allowsWeb: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [updatingProject, setUpdatingProject] = useState(false);
@@ -410,6 +413,7 @@ export default function DashboardPage() {
           apiKey: formData.apiKey || undefined,
           whitelistedUrls: formData.whitelistedUrls,
           rateLimit: formData.rateLimit,
+          allowsWeb: formData.allowsWeb,
         }),
       });
 
@@ -426,11 +430,11 @@ export default function DashboardPage() {
         setShowPartialKey(true);
         setShowAddKeyModal(false);
         // Reset form
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
       } else {
         // If no partial key returned, just close modal and refresh
         setShowAddKeyModal(false);
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
       }
 
       // Refresh keys list
@@ -473,7 +477,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       setShowAddKeyModal(false);
       setIsClosingModal(false);
-      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
+      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
       setNewWhitelistedUrl("");
     }, 300);
   };
@@ -552,6 +556,7 @@ export default function DashboardPage() {
         description: key.description || "",
         whitelistedUrls: key.whitelistedUrls || [],
         rateLimit: key.rateLimit ?? null,
+        allowsWeb: key.allowsWeb ?? false,
       });
       setShowEditKeyModal(true);
     }
@@ -563,7 +568,7 @@ export default function DashboardPage() {
       setShowEditKeyModal(false);
       setIsClosingEditKeyModal(false);
       setEditingKeyId(null);
-      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: null });
+      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
       setNewWhitelistedUrlEdit("");
     }, 300);
   };
@@ -588,6 +593,7 @@ export default function DashboardPage() {
           description: keyFormData.description,
           whitelistedUrls: keyFormData.whitelistedUrls,
           rateLimit: keyFormData.rateLimit,
+          allowsWeb: keyFormData.allowsWeb,
         }),
       });
 
@@ -1066,6 +1072,21 @@ export default function DashboardPage() {
                         {key.rateLimit != null ? `${key.rateLimit} requests/min` : "Unlimited"}
                       </span>
                     </div>
+                    <div className="key-detail-row">
+                      <span className="key-detail-label">Web Requests:</span>
+                      <span className={`key-detail-value ${key.allowsWeb ? 'allow-web-enabled' : ''}`}>
+                        {key.allowsWeb ? (
+                          <>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                              <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                            </svg>
+                            Enabled
+                          </>
+                        ) : "Disabled"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1322,6 +1343,36 @@ export default function DashboardPage() {
                   Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
                 </p>
               </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Allow Web Requests
+                </label>
+                <div className="allow-web-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={formData.allowsWeb}
+                      onChange={(e) => setFormData({ ...formData, allowsWeb: e.target.checked })}
+                    />
+                    <span className="toggle-label">Enable web requesting</span>
+                  </label>
+                </div>
+                {formData.allowsWeb && (
+                  <div className="allow-web-warning">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                    </svg>
+                    <div>
+                      <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
+                    </div>
+                  </div>
+                )}
+                <p className="form-hint">
+                  When enabled, requests can be made from any web origin without device verification.
+                </p>
+              </div>
               <div className="modal-actions">
                 <button
                   type="button"
@@ -1528,6 +1579,36 @@ export default function DashboardPage() {
                 </div>
                 <p className="form-hint">
                   Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Allow Web Requests
+                </label>
+                <div className="allow-web-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.allowsWeb}
+                      onChange={(e) => setKeyFormData({ ...keyFormData, allowsWeb: e.target.checked })}
+                    />
+                    <span className="toggle-label">Enable web requesting</span>
+                  </label>
+                </div>
+                {keyFormData.allowsWeb && (
+                  <div className="allow-web-warning">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                    </svg>
+                    <div>
+                      <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
+                    </div>
+                  </div>
+                )}
+                <p className="form-hint">
+                  When enabled, requests can be made from any web origin without device verification.
                 </p>
               </div>
               <div className="modal-actions">

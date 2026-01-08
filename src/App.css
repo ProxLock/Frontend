@@ -1349,6 +1349,47 @@ body {
   font-weight: 500;
 }
 
+/* Allow Web Input */
+.allow-web-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.allow-web-warning {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+  color: #eab308;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  align-items: flex-start;
+}
+
+.allow-web-warning svg {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.allow-web-warning strong {
+  font-weight: 600;
+}
+
+.key-detail-value.allow-web-enabled {
+  color: #eab308;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.key-detail-value.allow-web-enabled svg {
+  flex-shrink: 0;
+}
+
 /* DeviceCheck Section */
 .devicecheck-section {
   margin-top: 3rem;
