@@ -46,14 +46,14 @@ const API_DIRECTORY: Record<string, string[]> = {
 
 const getWhitelistedUrlsFromName = (name: string): string[] => {
   if (!name) return [];
-  
+
   const normalizedName = name.toLowerCase().trim();
-  
+
   // Direct match
   if (API_DIRECTORY[normalizedName]) {
     return API_DIRECTORY[normalizedName];
   }
-  
+
   // Partial match - only if input is at least 3 characters
   // Match if the normalized name starts with a key, or if a key is contained in the name
   if (normalizedName.length >= 3) {
@@ -70,7 +70,7 @@ const getWhitelistedUrlsFromName = (name: string): string[] => {
       }
     }
   }
-  
+
   return [];
 };
 
@@ -88,6 +88,7 @@ interface APIKey {
   partialKey?: string;
   associationId?: string;
   whitelistedUrls?: string[];
+  rateLimit?: number | null;
 }
 
 interface DeviceCheckKey {
@@ -122,6 +123,7 @@ export default function DashboardPage() {
     description: "",
     apiKey: "",
     whitelistedUrls: [] as string[],
+    rateLimit: null as number | null,
   });
   const [projectFormData, setProjectFormData] = useState({
     name: "",
@@ -131,6 +133,7 @@ export default function DashboardPage() {
     name: "",
     description: "",
     whitelistedUrls: [] as string[],
+    rateLimit: null as number | null,
   });
   const [submitting, setSubmitting] = useState(false);
   const [updatingProject, setUpdatingProject] = useState(false);
@@ -199,12 +202,12 @@ export default function DashboardPage() {
 
   const handleNameChange = (name: string, isEdit: boolean = false) => {
     const autoUrls = getWhitelistedUrlsFromName(name);
-    
+
     if (isEdit) {
       // If name is empty, clear whitelistedUrls
       // If name matches an API, always update whitelistedUrls
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : keyFormData.whitelistedUrls);
-      
+
       setKeyFormData({
         ...keyFormData,
         name,
@@ -214,7 +217,7 @@ export default function DashboardPage() {
       // If name is empty, clear whitelistedUrls
       // If name matches an API, always update whitelistedUrls
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : formData.whitelistedUrls);
-      
+
       setFormData({
         ...formData,
         name,
@@ -228,7 +231,7 @@ export default function DashboardPage() {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
-        
+
         // Auto-fill keyID with filename (without extension and AuthKey_ prefix) if keyID is blank
         let newKeyID = deviceCheckFormData.keyID;
         if (!deviceCheckFormData.keyID.trim()) {
@@ -237,9 +240,9 @@ export default function DashboardPage() {
           fileNameWithoutExt = fileNameWithoutExt.replace(/^AuthKey_/i, '');
           newKeyID = fileNameWithoutExt;
         }
-        
-        setDeviceCheckFormData({ 
-          ...deviceCheckFormData, 
+
+        setDeviceCheckFormData({
+          ...deviceCheckFormData,
           privateKey: content.trim(),
           keyID: newKeyID
         });
@@ -388,7 +391,7 @@ export default function DashboardPage() {
     try {
       setSubmitting(true);
       const token = await getToken({ template: "default" });
-      
+
       const res = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
         method: "POST",
         headers: {
@@ -401,6 +404,7 @@ export default function DashboardPage() {
           description: formData.description || undefined,
           apiKey: formData.apiKey || undefined,
           whitelistedUrls: formData.whitelistedUrls,
+          rateLimit: formData.rateLimit,
         }),
       });
 
@@ -410,18 +414,18 @@ export default function DashboardPage() {
       }
 
       const newKey = await res.json();
-      
+
       // Show the partial key one time
       if (newKey.userPartialKey) {
         setPartialKeyToShow(newKey.userPartialKey);
         setShowPartialKey(true);
         setShowAddKeyModal(false);
         // Reset form
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
       } else {
         // If no partial key returned, just close modal and refresh
         setShowAddKeyModal(false);
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
       }
 
       // Refresh keys list
@@ -464,7 +468,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       setShowAddKeyModal(false);
       setIsClosingModal(false);
-      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null });
       setNewWhitelistedUrl("");
     }, 300);
   };
@@ -503,7 +507,7 @@ export default function DashboardPage() {
     try {
       setUpdatingProject(true);
       const token = await getToken({ template: "default" });
-      
+
       const res = await fetch(`${API_URL}/me/projects/${projectId}`, {
         method: "PUT",
         headers: {
@@ -542,6 +546,7 @@ export default function DashboardPage() {
         name: key.name || "",
         description: key.description || "",
         whitelistedUrls: key.whitelistedUrls || [],
+        rateLimit: key.rateLimit ?? null,
       });
       setShowEditKeyModal(true);
     }
@@ -553,7 +558,7 @@ export default function DashboardPage() {
       setShowEditKeyModal(false);
       setIsClosingEditKeyModal(false);
       setEditingKeyId(null);
-      setKeyFormData({ name: "", description: "", whitelistedUrls: [] });
+      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: null });
       setNewWhitelistedUrlEdit("");
     }, 300);
   };
@@ -577,6 +582,7 @@ export default function DashboardPage() {
           name: keyFormData.name || undefined,
           description: keyFormData.description,
           whitelistedUrls: keyFormData.whitelistedUrls,
+          rateLimit: keyFormData.rateLimit,
         }),
       });
 
@@ -719,7 +725,7 @@ export default function DashboardPage() {
 
   const handleDeviceCheckModalModeChange = async (mode: "upload" | "link") => {
     setDeviceCheckModalMode(mode);
-    
+
     if (mode === "link") {
       setLoadingAvailableKeys(true);
       setSelectedKeyToLink("");
@@ -858,7 +864,7 @@ export default function DashboardPage() {
               title="Edit project"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13.5 1.5L16.5 4.5L5.25 15.75H1.5V12L13.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M13.5 1.5L16.5 4.5L5.25 15.75H1.5V12L13.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </div>
@@ -898,7 +904,7 @@ export default function DashboardPage() {
                         title="Edit key"
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M11.5 1.5L14.5 4.5L4.5 14.5H1.5V11.5L11.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M11.5 1.5L14.5 4.5L4.5 14.5H1.5V11.5L11.5 1.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </button>
                       <button
@@ -907,10 +913,10 @@ export default function DashboardPage() {
                         title="Delete key"
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M5.5 5.5C5.77614 5.5 6 5.72386 6 6V12C6 12.2761 5.77614 12.5 5.5 12.5C5.22386 12.5 5 12.2761 5 12V6C5 5.72386 5.22386 5.5 5.5 5.5Z" fill="currentColor"/>
-                          <path d="M8 5.5C8.27614 5.5 8.5 5.72386 8.5 6V12C8.5 12.2761 8.27614 12.5 8 12.5C7.72386 12.5 7.5 12.2761 7.5 12V6C7.5 5.72386 7.72386 5.5 8 5.5Z" fill="currentColor"/>
-                          <path d="M11 6C11 5.72386 10.7761 5.5 10.5 5.5C10.2239 5.5 10 5.72386 10 6V12C10 12.2761 10.2239 12.5 10.5 12.5C10.7761 12.5 11 12.2761 11 12V6Z" fill="currentColor"/>
-                          <path fillRule="evenodd" clipRule="evenodd" d="M10.5 2C10.7761 2 11 2.22386 11 2.5V3H13.5C13.7761 3 14 3.22386 14 3.5C14 3.77614 13.7761 4 13.5 4H12.5V13C12.5 13.8284 11.8284 14.5 11 14.5H5C4.17157 14.5 3.5 13.8284 3.5 13V4H2.5C2.22386 4 2 3.77614 2 3.5C2 3.22386 2.22386 3 2.5 3H5V2.5C5 2.22386 5.22386 2 5.5 2H10.5ZM4.5 4V13C4.5 13.2761 4.72386 13.5 5 13.5H11C11.2761 13.5 11.5 13.2761 11.5 13V4H4.5Z" fill="currentColor"/>
+                          <path d="M5.5 5.5C5.77614 5.5 6 5.72386 6 6V12C6 12.2761 5.77614 12.5 5.5 12.5C5.22386 12.5 5 12.2761 5 12V6C5 5.72386 5.22386 5.5 5.5 5.5Z" fill="currentColor" />
+                          <path d="M8 5.5C8.27614 5.5 8.5 5.72386 8.5 6V12C8.5 12.2761 8.27614 12.5 8 12.5C7.72386 12.5 7.5 12.2761 7.5 12V6C7.5 5.72386 7.72386 5.5 8 5.5Z" fill="currentColor" />
+                          <path d="M11 6C11 5.72386 10.7761 5.5 10.5 5.5C10.2239 5.5 10 5.72386 10 6V12C10 12.2761 10.2239 12.5 10.5 12.5C10.7761 12.5 11 12.2761 11 12V6Z" fill="currentColor" />
+                          <path fillRule="evenodd" clipRule="evenodd" d="M10.5 2C10.7761 2 11 2.22386 11 2.5V3H13.5C13.7761 3 14 3.22386 14 3.5C14 3.77614 13.7761 4 13.5 4H12.5V13C12.5 13.8284 11.8284 14.5 11 14.5H5C4.17157 14.5 3.5 13.8284 3.5 13V4H2.5C2.22386 4 2 3.77614 2 3.5C2 3.22386 2.22386 3 2.5 3H5V2.5C5 2.22386 5.22386 2 5.5 2H10.5ZM4.5 4V13C4.5 13.2761 4.72386 13.5 5 13.5H11C11.2761 13.5 11.5 13.2761 11.5 13V4H4.5Z" fill="currentColor" />
                         </svg>
                       </button>
                     </div>
@@ -931,12 +937,12 @@ export default function DashboardPage() {
                           >
                             {copiedButtonId === `association-${key.id}` ? (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             ) : (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </button>
@@ -955,12 +961,12 @@ export default function DashboardPage() {
                           >
                             {copiedButtonId === `keyid-${key.id}` ? (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             ) : (
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </button>
@@ -979,6 +985,12 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
+                    <div className="key-detail-row">
+                      <span className="key-detail-label">Rate Limit:</span>
+                      <span className="key-detail-value">
+                        {key.rateLimit != null ? `${key.rateLimit} requests/min` : "Unlimited"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -991,16 +1003,16 @@ export default function DashboardPage() {
           <div className="info-alert-content">
             <div className="info-alert-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor"/>
+                <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" fill="currentColor" />
               </svg>
             </div>
             <div className="info-alert-text">
               <strong>Apple Platform Setup Guide</strong>
               <span>
                 Need help setting up for iOS, macOS, or other Apple platforms? Check out our{" "}
-                <a 
-                  href="https://docs.proxlock.dev/ios-sdk/" 
-                  target="_blank" 
+                <a
+                  href="https://docs.proxlock.dev/ios-sdk/"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="info-alert-link"
                 >
@@ -1048,12 +1060,12 @@ export default function DashboardPage() {
                     >
                       {copiedButtonId === 'bypass-token' ? (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       ) : (
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </button>
@@ -1189,13 +1201,51 @@ export default function DashboardPage() {
                           title="Remove URL"
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Rate Limit (optional)
+                </label>
+                <div className="rate-limit-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={formData.rateLimit !== null}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ ...formData, rateLimit: 60 });
+                        } else {
+                          setFormData({ ...formData, rateLimit: null });
+                        }
+                      }}
+                    />
+                    <span className="toggle-label">Enable rate limiting</span>
+                  </label>
+                  {formData.rateLimit !== null && (
+                    <div className="rate-limit-value-input">
+                      <input
+                        type="number"
+                        id="key-rate-limit"
+                        className="form-input"
+                        value={formData.rateLimit}
+                        onChange={(e) => setFormData({ ...formData, rateLimit: parseInt(e.target.value) || 1 })}
+                        min={1}
+                        placeholder="60"
+                      />
+                      <span className="rate-limit-unit">requests/min</span>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint">
+                  Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                </p>
               </div>
               <div className="modal-actions">
                 <button
@@ -1359,13 +1409,51 @@ export default function DashboardPage() {
                           title="Remove URL"
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Rate Limit (optional)
+                </label>
+                <div className="rate-limit-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.rateLimit !== null}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setKeyFormData({ ...keyFormData, rateLimit: 60 });
+                        } else {
+                          setKeyFormData({ ...keyFormData, rateLimit: null });
+                        }
+                      }}
+                    />
+                    <span className="toggle-label">Enable rate limiting</span>
+                  </label>
+                  {keyFormData.rateLimit !== null && (
+                    <div className="rate-limit-value-input">
+                      <input
+                        type="number"
+                        id="key-edit-rate-limit"
+                        className="form-input"
+                        value={keyFormData.rateLimit}
+                        onChange={(e) => setKeyFormData({ ...keyFormData, rateLimit: parseInt(e.target.value) || 1 })}
+                        min={1}
+                        placeholder="60"
+                      />
+                      <span className="rate-limit-unit">requests/min</span>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint">
+                  Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                </p>
               </div>
               <div className="modal-actions">
                 <button
@@ -1394,28 +1482,28 @@ export default function DashboardPage() {
                 This is the only time you'll see your partial key. Copy it now!
               </p>
             </div>
-              <div className="partial-key-content">
-                <label className="form-label">Your Partial Key:</label>
-                <div className="partial-key-display">
-                  <code className="partial-key-value">{partialKeyToShow}</code>
-                </div>
-                <p className="partial-key-instruction">
-                  After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
-                </p>
+            <div className="partial-key-content">
+              <label className="form-label">Your Partial Key:</label>
+              <div className="partial-key-display">
+                <code className="partial-key-value">{partialKeyToShow}</code>
               </div>
-              <div className="partial-key-actions">
-                <button 
-                  className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
-                  onClick={async () => {
-                    await handleCopyToClipboard(partialKeyToShow, 'partial-key');
-                    setTimeout(() => {
-                      handleClosePartialKey();
-                    }, 500);
-                  }}
-                >
-                  {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
-                </button>
-              </div>
+              <p className="partial-key-instruction">
+                After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
+              </p>
+            </div>
+            <div className="partial-key-actions">
+              <button
+                className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
+                onClick={async () => {
+                  await handleCopyToClipboard(partialKeyToShow, 'partial-key');
+                  setTimeout(() => {
+                    handleClosePartialKey();
+                  }, 500);
+                }}
+              >
+                {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1435,7 +1523,7 @@ export default function DashboardPage() {
                 ×
               </button>
             </div>
-            
+
             {/* Mode Toggle */}
             <div className="modal-mode-toggle">
               <button
@@ -1524,7 +1612,7 @@ export default function DashboardPage() {
                         e.preventDefault();
                         e.stopPropagation();
                         setIsDraggingOver(false);
-                        
+
                         const file = e.dataTransfer.files?.[0];
                         if (file) {
                           handleFileRead(file);
@@ -1532,7 +1620,7 @@ export default function DashboardPage() {
                       }}
                     >
                       <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <span>{isDraggingOver ? 'Drop Key File Here' : 'Upload Key File'}</span>
                     </label>
