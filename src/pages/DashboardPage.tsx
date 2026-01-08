@@ -124,7 +124,7 @@ export default function DashboardPage() {
     description: "",
     apiKey: "",
     whitelistedUrls: [] as string[],
-    rateLimit: null as number | null,
+    rateLimit: -1 as number,
     allowsWeb: false,
   });
   const [projectFormData, setProjectFormData] = useState({
@@ -135,7 +135,7 @@ export default function DashboardPage() {
     name: "",
     description: "",
     whitelistedUrls: [] as string[],
-    rateLimit: null as number | null,
+    rateLimit: -1 as number,
     allowsWeb: false,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -430,11 +430,11 @@ export default function DashboardPage() {
         setShowPartialKey(true);
         setShowAddKeyModal(false);
         // Reset form
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       } else {
         // If no partial key returned, just close modal and refresh
         setShowAddKeyModal(false);
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       }
 
       // Refresh keys list
@@ -477,7 +477,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       setShowAddKeyModal(false);
       setIsClosingModal(false);
-      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
+      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrl("");
     }, 300);
   };
@@ -555,7 +555,7 @@ export default function DashboardPage() {
         name: key.name || "",
         description: key.description || "",
         whitelistedUrls: key.whitelistedUrls || [],
-        rateLimit: key.rateLimit ?? null,
+        rateLimit: key.rateLimit ?? -1,
         allowsWeb: key.allowsWeb ?? false,
       });
       setShowEditKeyModal(true);
@@ -568,7 +568,7 @@ export default function DashboardPage() {
       setShowEditKeyModal(false);
       setIsClosingEditKeyModal(false);
       setEditingKeyId(null);
-      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: null, allowsWeb: false });
+      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrlEdit("");
     }, 300);
   };
@@ -1080,7 +1080,7 @@ export default function DashboardPage() {
                     <div className="key-detail-row">
                       <span className="key-detail-label">Rate Limit:</span>
                       <span className="key-detail-value">
-                        {key.rateLimit != null ? `${key.rateLimit} requests/min` : "Unlimited"}
+                        {key.rateLimit != null && key.rateLimit > 0 ? `${key.rateLimit} requests/min` : "Unlimited"}
                       </span>
                     </div>
                   </div>
@@ -1310,18 +1310,18 @@ export default function DashboardPage() {
                     <label className="toggle-container">
                       <input
                         type="checkbox"
-                        checked={formData.rateLimit !== null}
+                        checked={formData.rateLimit !== null && formData.rateLimit > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setFormData({ ...formData, rateLimit: 60 });
                           } else {
-                            setFormData({ ...formData, rateLimit: null });
+                            setFormData({ ...formData, rateLimit: -1 });
                           }
                         }}
                       />
                       <span className="toggle-label">Enable rate limiting</span>
                     </label>
-                    {formData.rateLimit !== null && (
+                    {formData.rateLimit !== null && formData.rateLimit > 0 && (
                       <div className="rate-limit-value-input">
                         <input
                           type="number"
@@ -1552,18 +1552,18 @@ export default function DashboardPage() {
                     <label className="toggle-container">
                       <input
                         type="checkbox"
-                        checked={keyFormData.rateLimit !== null}
+                        checked={keyFormData.rateLimit !== null && keyFormData.rateLimit > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setKeyFormData({ ...keyFormData, rateLimit: 60 });
                           } else {
-                            setKeyFormData({ ...keyFormData, rateLimit: null });
+                            setKeyFormData({ ...keyFormData, rateLimit: -1 });
                           }
                         }}
                       />
                       <span className="toggle-label">Enable rate limiting</span>
                     </label>
-                    {keyFormData.rateLimit !== null && (
+                    {keyFormData.rateLimit !== null && keyFormData.rateLimit > 0 && (
                       <div className="rate-limit-value-input">
                         <input
                           type="number"
