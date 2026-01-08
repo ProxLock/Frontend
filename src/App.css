@@ -1110,6 +1110,63 @@ body {
   flex: 1;
 }
 
+.key-name-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.key-name-container .key-name {
+  flex: 0 1 auto;
+}
+
+.allows-web-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(234, 179, 8, 0.2);
+  border-radius: 0.375rem;
+  color: #eab308;
+  flex-shrink: 0;
+  position: relative;
+  cursor: help;
+}
+
+.allows-web-badge::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.75rem;
+  background: #eab308;
+  color: #1a1a1a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);
+  z-index: 10;
+}
+
+.allows-web-badge:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.allows-web-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
 .key-card-actions {
   display: flex;
   align-items: center;
@@ -1347,6 +1404,47 @@ body {
   font-size: 0.875rem;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+/* Allow Web Input */
+.allow-web-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.allow-web-warning {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 0.5rem;
+  margin-top: 0.5rem;
+  color: #eab308;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  align-items: flex-start;
+}
+
+.allow-web-warning svg {
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.allow-web-warning strong {
+  font-weight: 600;
+}
+
+.key-detail-value.allow-web-enabled {
+  color: #eab308;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.key-detail-value.allow-web-enabled svg {
+  flex-shrink: 0;
 }
 
 /* DeviceCheck Section */
