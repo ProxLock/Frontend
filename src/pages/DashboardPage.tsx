@@ -166,6 +166,7 @@ export default function DashboardPage() {
   const [showPlayIntegrityModal, setShowPlayIntegrityModal] = useState(false);
   const [isClosingPlayIntegrityModal, setIsClosingPlayIntegrityModal] = useState(false);
   const [playIntegrityServiceAccountJson, setPlayIntegrityServiceAccountJson] = useState("");
+  const [playIntegrityPackageName, setPlayIntegrityPackageName] = useState("");
   const [uploadingPlayIntegrity, setUploadingPlayIntegrity] = useState(false);
   const [isDraggingOverPlayIntegrity, setIsDraggingOverPlayIntegrity] = useState(false);
   const [playIntegrityModalMode, setPlayIntegrityModalMode] = useState<"upload" | "link">("upload");
@@ -888,7 +889,10 @@ export default function DashboardPage() {
           "Content-Type": "application/json; charset=utf-8",
         },
         credentials: "include",
-        body: JSON.stringify(jsonBody),
+        body: JSON.stringify({
+          gcloud_json: jsonBody,
+          package_name: playIntegrityPackageName,
+        }),
       });
 
       if (!res.ok) {
@@ -926,6 +930,7 @@ export default function DashboardPage() {
       setShowPlayIntegrityModal(false);
       setIsClosingPlayIntegrityModal(false);
       setPlayIntegrityServiceAccountJson("");
+      setPlayIntegrityPackageName("");
       setIsDraggingOverPlayIntegrity(false);
       setPlayIntegrityModalMode("upload");
       setSelectedPlayIntegrityToLink("");
@@ -1939,6 +1944,20 @@ export default function DashboardPage() {
             {playIntegrityModalMode === "upload" ? (
               <form onSubmit={handleUploadPlayIntegrity} className="modal-form">
                 <div className="form-group">
+                  <label htmlFor="playintegrity-package-name" className="form-label">
+                    Android Package Name <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="playintegrity-package-name"
+                    className="form-input"
+                    value={playIntegrityPackageName}
+                    onChange={(e) => setPlayIntegrityPackageName(e.target.value)}
+                    placeholder="e.g., com.example.app"
+                    required
+                  />
+                </div>
+                <div className="form-group">
                   <label htmlFor="playintegrity-json" className="form-label">
                     Service Account JSON <span className="required">*</span>
                   </label>
@@ -2006,7 +2025,8 @@ export default function DashboardPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary" disabled={uploadingPlayIntegrity || !playIntegrityServiceAccountJson.trim()}>
+
+                  <button type="submit" className="btn-primary" disabled={uploadingPlayIntegrity || !playIntegrityServiceAccountJson.trim() || !playIntegrityPackageName.trim()}>
                     {uploadingPlayIntegrity ? "Uploading..." : "Upload Key"}
                   </button>
                 </div>
