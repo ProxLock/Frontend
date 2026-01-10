@@ -98,6 +98,12 @@ interface DeviceCheckKey {
   bypassToken: string;
 }
 
+interface PlayIntegrityConfig {
+  projectID: string;
+  bypassToken: string;
+  clientEmail: string;
+}
+
 export default function DashboardPage() {
   const { getToken } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
@@ -165,6 +171,20 @@ export default function DashboardPage() {
   const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
   const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
   const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
+
+  // Play Integrity state
+  const [playIntegrityConfig, setPlayIntegrityConfig] = useState<PlayIntegrityConfig | null>(null);
+  const [showPlayIntegrityModal, setShowPlayIntegrityModal] = useState(false);
+  const [isClosingPlayIntegrityModal, setIsClosingPlayIntegrityModal] = useState(false);
+  const [playIntegrityServiceAccountJson, setPlayIntegrityServiceAccountJson] = useState("");
+  const [playIntegrityPackageName, setPlayIntegrityPackageName] = useState("");
+  const [uploadingPlayIntegrity, setUploadingPlayIntegrity] = useState(false);
+  const [isDraggingOverPlayIntegrity, setIsDraggingOverPlayIntegrity] = useState(false);
+  const [playIntegrityModalMode, setPlayIntegrityModalMode] = useState<"upload" | "link">("upload");
+  const [availablePlayIntegrityConfigs, setAvailablePlayIntegrityConfigs] = useState<PlayIntegrityConfig[]>([]);
+  const [loadingAvailablePlayIntegrityConfigs, setLoadingAvailablePlayIntegrityConfigs] = useState(false);
+  const [selectedPlayIntegrityToLink, setSelectedPlayIntegrityToLink] = useState<string>("");
+  const [linkingPlayIntegrity, setLinkingPlayIntegrity] = useState(false);
 
   const handleAddWhitelistedUrl = (isEdit: boolean = false) => {
     const url = isEdit ? newWhitelistedUrlEdit : newWhitelistedUrl;
@@ -259,6 +279,17 @@ export default function DashboardPage() {
     }
   };
 
+  const handlePlayIntegrityFileRead = (file: File) => {
+    if (file && file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        setPlayIntegrityServiceAccountJson(content.trim());
+      };
+      reader.readAsText(file);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!projectId) {
@@ -271,6 +302,9 @@ export default function DashboardPage() {
         setLoading(true);
         setError(null);
         setIsNotFound(false);
+        // Reset device-specific configs when switching projects
+        setDeviceCheckKey(null);
+        setPlayIntegrityConfig(null);
         const token = await getToken({ template: "default" });
 
         // Fetch project details
@@ -348,6 +382,26 @@ export default function DashboardPage() {
         } catch (deviceCheckError) {
           console.warn("Error fetching device check key:", deviceCheckError);
           // Don't set device check key if it fails
+        }
+
+        // Fetch Play Integrity config for this project - don't fail the whole page if this fails
+        try {
+          const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+          });
+
+          if (playIntegrityRes.ok) {
+            const playIntegrityData = await playIntegrityRes.json();
+            setPlayIntegrityConfig(playIntegrityData || null);
+          }
+        } catch (playIntegrityError) {
+          console.warn("Error fetching play integrity config:", playIntegrityError);
+          // Don't set play integrity config if it fails
         }
 
         // Project loaded successfully, set loading to false
@@ -828,6 +882,161 @@ export default function DashboardPage() {
     }
   };
 
+  // Play Integrity handlers
+  const handleUploadPlayIntegrity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId) return;
+
+    try {
+      setUploadingPlayIntegrity(true);
+      const token = await getToken({ template: "default" });
+
+      // Parse the JSON to send it as the request body
+      let jsonBody;
+      try {
+        jsonBody = JSON.parse(playIntegrityServiceAccountJson);
+      } catch {
+        throw new Error("Invalid JSON format. Please provide a valid service account JSON.");
+      }
+
+      const res = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          gcloud_json: jsonBody,
+          package_name: playIntegrityPackageName,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to upload Play Integrity key: ${res.statusText}`);
+      }
+
+      // Refresh Play Integrity config
+      const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (playIntegrityRes.ok) {
+        const playIntegrityData = await playIntegrityRes.json();
+        setPlayIntegrityConfig(playIntegrityData || null);
+      }
+
+      handleClosePlayIntegrityModal();
+    } catch (err) {
+      console.error("Error uploading Play Integrity key:", err);
+      setErrorToast((err as Error).message || "Failed to upload Play Integrity key. Please try again.");
+    } finally {
+      setUploadingPlayIntegrity(false);
+    }
+  };
+
+  const handleClosePlayIntegrityModal = () => {
+    setIsClosingPlayIntegrityModal(true);
+    setTimeout(() => {
+      setShowPlayIntegrityModal(false);
+      setIsClosingPlayIntegrityModal(false);
+      setPlayIntegrityServiceAccountJson("");
+      setPlayIntegrityPackageName("");
+      setIsDraggingOverPlayIntegrity(false);
+      setPlayIntegrityModalMode("upload");
+      setSelectedPlayIntegrityToLink("");
+      setAvailablePlayIntegrityConfigs([]);
+    }, 300);
+  };
+
+  const handlePlayIntegrityModalModeChange = async (mode: "upload" | "link") => {
+    setPlayIntegrityModalMode(mode);
+
+    if (mode === "link") {
+      setLoadingAvailablePlayIntegrityConfigs(true);
+      setSelectedPlayIntegrityToLink("");
+
+      try {
+        const token = await getToken({ template: "default" });
+        const res = await fetch(`${API_URL}/me/play-integrity`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json; charset=utf-8",
+          },
+          credentials: "include",
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setAvailablePlayIntegrityConfigs(Array.isArray(data) ? data : []);
+        } else {
+          console.error("Failed to fetch available Play Integrity configs");
+          setAvailablePlayIntegrityConfigs([]);
+        }
+      } catch (err) {
+        console.error("Error fetching available Play Integrity configs:", err);
+        setAvailablePlayIntegrityConfigs([]);
+      } finally {
+        setLoadingAvailablePlayIntegrityConfigs(false);
+      }
+    }
+  };
+
+  const handleLinkPlayIntegrity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectId || !selectedPlayIntegrityToLink) return;
+
+    try {
+      setLinkingPlayIntegrity(true);
+      const token = await getToken({ template: "default" });
+
+      const res = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          projectID: selectedPlayIntegrityToLink,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to link Play Integrity config: ${res.statusText}`);
+      }
+
+      // Refresh Play Integrity config
+      const playIntegrityRes = await fetch(`${API_URL}/me/projects/${projectId}/play-integrity`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (playIntegrityRes.ok) {
+        const playIntegrityData = await playIntegrityRes.json();
+        setPlayIntegrityConfig(playIntegrityData || null);
+      }
+
+      handleClosePlayIntegrityModal();
+    } catch (err) {
+      console.error("Error linking Play Integrity config:", err);
+      setErrorToast((err as Error).message || "Failed to link Play Integrity config. Please try again.");
+    } finally {
+      setLinkingPlayIntegrity(false);
+    }
+  };
+
   const handleCloseBulkRateLimitModal = () => {
     setIsClosingBulkRateLimitModal(true);
     setTimeout(() => {
@@ -1167,10 +1376,59 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </main >
+
+        {/* Play Integrity Section */}
+        <div className="playintegrity-section">
+          <div className="playintegrity-header">
+            <h2 className="section-title">Google Play Integrity</h2>
+            <button className="btn-primary" onClick={() => setShowPlayIntegrityModal(true)}>
+              {playIntegrityConfig ? "Update Key" : "+ Upload Play Integrity Key"}
+            </button>
+          </div>
+
+          {!playIntegrityConfig ? (
+            <div className="empty-playintegrity-state">
+              <div className="empty-icon">🤖</div>
+              <h3>No Play Integrity key yet</h3>
+              <p>Upload your Google Cloud service account JSON to enable Play Integrity verification.</p>
+            </div>
+          ) : (
+            <div className="playintegrity-card">
+              <div className="playintegrity-details">
+                <div className="playintegrity-detail-row">
+                  <span className="playintegrity-detail-label">Service Account Email:</span>
+                  <code className="playintegrity-detail-value">{playIntegrityConfig.clientEmail}</code>
+                </div>
+                <div className="playintegrity-detail-row">
+                  <span className="playintegrity-detail-label">Bypass Token:</span>
+                  <div className="playintegrity-value-container">
+                    <code className="playintegrity-detail-value">{playIntegrityConfig.bypassToken}</code>
+                    <button
+                      className={`playintegrity-copy-btn ${copiedButtonId === 'pi-bypass-token' ? 'copied' : ''}`}
+                      onClick={() => handleCopyToClipboard(playIntegrityConfig.bypassToken, 'pi-bypass-token')}
+                      title={copiedButtonId === 'pi-bypass-token' ? "Copied!" : "Copy bypass token"}
+                    >
+                      {copiedButtonId === 'pi-bypass-token' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Delete Project Section */}
-      < div className="dashboard-delete-section" >
+      <div className="dashboard-delete-section">
         <div className="dashboard-delete-content">
           <div className="dashboard-delete-info">
             <h3 className="dashboard-delete-title">Danger Zone</h3>
@@ -1186,7 +1444,7 @@ export default function DashboardPage() {
             {deletingProject ? "Deleting..." : "Delete Project"}
           </button>
         </div>
-      </div >
+      </div>
 
       {/* Add Key Modal */}
       {
@@ -1385,249 +1643,245 @@ export default function DashboardPage() {
               </form>
             </div>
           </div>
-        )
-      }
+        )}
 
       {/* Edit Project Modal */}
-      {
-        showEditProjectModal && (
-          <div className={`modal-overlay ${isClosingEditModal ? 'closing' : ''}`} onClick={handleCloseEditProject}>
-            <div className={`modal-content ${isClosingEditModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2 className="modal-title">Edit Project</h2>
+      {showEditProjectModal && (
+        <div className={`modal-overlay ${isClosingEditModal ? 'closing' : ''}`} onClick={handleCloseEditProject}>
+          <div className={`modal-content ${isClosingEditModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Edit Project</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseEditProject}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleUpdateProject} className="modal-form">
+              <div className="form-group">
+                <label htmlFor="project-name" className="form-label">
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  id="project-name"
+                  className="form-input"
+                  value={projectFormData.name}
+                  onChange={(e) => setProjectFormData({ ...projectFormData, name: e.target.value })}
+                  placeholder="Enter project name"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="project-description" className="form-label">
+                  Description
+                </label>
+                <textarea
+                  id="project-description"
+                  className="form-textarea"
+                  value={projectFormData.description}
+                  onChange={(e) => setProjectFormData({ ...projectFormData, description: e.target.value })}
+                  placeholder="Enter project description"
+                  rows={4}
+                />
+              </div>
+              <div className="modal-actions">
                 <button
-                  className="modal-close-btn"
+                  type="button"
+                  className="btn-secondary"
                   onClick={handleCloseEditProject}
                 >
-                  ×
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={updatingProject}>
+                  {updatingProject ? "Updating..." : "Update Project"}
                 </button>
               </div>
-              <form onSubmit={handleUpdateProject} className="modal-form">
-                <div className="form-group">
-                  <label htmlFor="project-name" className="form-label">
-                    Project Name
-                  </label>
-                  <input
-                    type="text"
-                    id="project-name"
-                    className="form-input"
-                    value={projectFormData.name}
-                    onChange={(e) => setProjectFormData({ ...projectFormData, name: e.target.value })}
-                    placeholder="Enter project name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="project-description" className="form-label">
-                    Description
-                  </label>
-                  <textarea
-                    id="project-description"
-                    className="form-textarea"
-                    value={projectFormData.description}
-                    onChange={(e) => setProjectFormData({ ...projectFormData, description: e.target.value })}
-                    placeholder="Enter project description"
-                    rows={4}
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleCloseEditProject}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={updatingProject}>
-                    {updatingProject ? "Updating..." : "Update Project"}
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Edit Key Modal */}
-      {
-        showEditKeyModal && (
-          <div className={`modal-overlay ${isClosingEditKeyModal ? 'closing' : ''}`} onClick={handleCloseEditKey}>
-            <div className={`modal-content ${isClosingEditKeyModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2 className="modal-title">Edit API Key</h2>
-                <button
-                  className="modal-close-btn"
-                  onClick={handleCloseEditKey}
-                >
-                  ×
-                </button>
+      {showEditKeyModal && (
+        <div className={`modal-overlay ${isClosingEditKeyModal ? 'closing' : ''}`} onClick={handleCloseEditKey}>
+          <div className={`modal-content ${isClosingEditKeyModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Edit API Key</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseEditKey}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleUpdateKey} className="modal-form">
+              <div className="form-group">
+                <label htmlFor="key-edit-name" className="form-label">
+                  Key Name
+                </label>
+                <input
+                  type="text"
+                  id="key-edit-name"
+                  className="form-input"
+                  value={keyFormData.name}
+                  onChange={(e) => handleNameChange(e.target.value, true)}
+                  placeholder="Enter key name"
+                />
               </div>
-              <form onSubmit={handleUpdateKey} className="modal-form">
-                <div className="form-group">
-                  <label htmlFor="key-edit-name" className="form-label">
-                    Key Name
-                  </label>
+              <div className="form-group">
+                <label htmlFor="key-edit-description" className="form-label">
+                  Description
+                </label>
+                <textarea
+                  id="key-edit-description"
+                  className="form-textarea"
+                  value={keyFormData.description}
+                  onChange={(e) => setKeyFormData({ ...keyFormData, description: e.target.value })}
+                  placeholder="Enter key description"
+                  rows={4}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="key-edit-whitelisted-urls" className="form-label">
+                  Whitelisted URLs <span className="required">*</span>
+                </label>
+                <div className="whitelisted-urls-input-group">
                   <input
                     type="text"
-                    id="key-edit-name"
+                    id="key-edit-whitelisted-urls"
                     className="form-input"
-                    value={keyFormData.name}
-                    onChange={(e) => handleNameChange(e.target.value, true)}
-                    placeholder="Enter key name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="key-edit-description" className="form-label">
-                    Description
-                  </label>
-                  <textarea
-                    id="key-edit-description"
-                    className="form-textarea"
-                    value={keyFormData.description}
-                    onChange={(e) => setKeyFormData({ ...keyFormData, description: e.target.value })}
-                    placeholder="Enter key description"
-                    rows={4}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="key-edit-whitelisted-urls" className="form-label">
-                    Whitelisted URLs <span className="required">*</span>
-                  </label>
-                  <div className="whitelisted-urls-input-group">
-                    <input
-                      type="text"
-                      id="key-edit-whitelisted-urls"
-                      className="form-input"
-                      value={newWhitelistedUrlEdit}
-                      onChange={(e) => setNewWhitelistedUrlEdit(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddWhitelistedUrl(true);
-                        }
-                      }}
-                      placeholder="e.g., api.example.com or api.example.com/path"
-                    />
-                    <button
-                      type="button"
-                      className="btn-secondary btn-small"
-                      onClick={(e) => {
+                    value={newWhitelistedUrlEdit}
+                    onChange={(e) => setNewWhitelistedUrlEdit(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
                         e.preventDefault();
                         handleAddWhitelistedUrl(true);
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <p className="form-hint">
-                    At least one URL is required. URLs are treated as wildcards (e.g., "api.example.com" matches "api.example.com/*"). Protocol is not required.
-                  </p>
-                  {keyFormData.whitelistedUrls.length > 0 && (
-                    <div className="whitelisted-urls-list">
-                      {keyFormData.whitelistedUrls.map((url, index) => (
-                        <div key={index} className="whitelisted-url-item">
-                          <code className="whitelisted-url-value">{url}/*</code>
-                          <button
-                            type="button"
-                            className="whitelisted-url-remove"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleRemoveWhitelistedUrl(url, true);
-                            }}
-                            title="Remove URL"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    Rate Limit (optional)
-                  </label>
-                  <div className="rate-limit-input-group">
-                    <label className="toggle-container">
-                      <input
-                        type="checkbox"
-                        checked={keyFormData.rateLimit !== null && keyFormData.rateLimit > 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setKeyFormData({ ...keyFormData, rateLimit: 60 });
-                          } else {
-                            setKeyFormData({ ...keyFormData, rateLimit: -1 });
-                          }
-                        }}
-                      />
-                      <span className="toggle-label">Enable rate limiting</span>
-                    </label>
-                    {keyFormData.rateLimit !== null && keyFormData.rateLimit > 0 && (
-                      <div className="rate-limit-value-input">
-                        <input
-                          type="number"
-                          id="key-edit-rate-limit"
-                          className="form-input"
-                          value={keyFormData.rateLimit}
-                          onChange={(e) => setKeyFormData({ ...keyFormData, rateLimit: parseInt(e.target.value) || 1 })}
-                          min={1}
-                          placeholder="60"
-                        />
-                        <span className="rate-limit-unit">requests/min</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="form-hint">
-                    Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
-                  </p>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    Allow Web Requests
-                  </label>
-                  <div className="allow-web-input-group">
-                    <label className="toggle-container">
-                      <input
-                        type="checkbox"
-                        checked={keyFormData.allowsWeb}
-                        onChange={(e) => setKeyFormData({ ...keyFormData, allowsWeb: e.target.checked })}
-                      />
-                      <span className="toggle-label">Enable web requesting</span>
-                    </label>
-                  </div>
-                  {keyFormData.allowsWeb && (
-                    <div className="allow-web-warning">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                        <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-                      </svg>
-                      <div>
-                        <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
-                      </div>
-                    </div>
-                  )}
-                  <p className="form-hint">
-                    When enabled, requests can be made from any web origin without device verification.
-                  </p>
-                </div>
-                <div className="modal-actions">
+                      }
+                    }}
+                    placeholder="e.g., api.example.com or api.example.com/path"
+                  />
                   <button
                     type="button"
-                    className="btn-secondary"
-                    onClick={handleCloseEditKey}
+                    className="btn-secondary btn-small"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleAddWhitelistedUrl(true);
+                    }}
                   >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={updatingKey || keyFormData.whitelistedUrls.length === 0}>
-                    {updatingKey ? "Updating..." : "Update Key"}
+                    Add
                   </button>
                 </div>
-              </form>
-            </div>
+                <p className="form-hint">
+                  At least one URL is required. URLs are treated as wildcards (e.g., "api.example.com" matches "api.example.com/*"). Protocol is not required.
+                </p>
+                {keyFormData.whitelistedUrls.length > 0 && (
+                  <div className="whitelisted-urls-list">
+                    {keyFormData.whitelistedUrls.map((url, index) => (
+                      <div key={index} className="whitelisted-url-item">
+                        <code className="whitelisted-url-value">{url}/*</code>
+                        <button
+                          type="button"
+                          className="whitelisted-url-remove"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleRemoveWhitelistedUrl(url, true);
+                          }}
+                          title="Remove URL"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Rate Limit (optional)
+                </label>
+                <div className="rate-limit-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.rateLimit !== null && keyFormData.rateLimit > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setKeyFormData({ ...keyFormData, rateLimit: 60 });
+                        } else {
+                          setKeyFormData({ ...keyFormData, rateLimit: -1 });
+                        }
+                      }}
+                    />
+                    <span className="toggle-label">Enable rate limiting</span>
+                  </label>
+                  {keyFormData.rateLimit !== null && keyFormData.rateLimit > 0 && (
+                    <div className="rate-limit-value-input">
+                      <input
+                        type="number"
+                        id="key-edit-rate-limit"
+                        className="form-input"
+                        value={keyFormData.rateLimit}
+                        onChange={(e) => setKeyFormData({ ...keyFormData, rateLimit: parseInt(e.target.value) || 1 })}
+                        min={1}
+                        placeholder="60"
+                      />
+                      <span className="rate-limit-unit">requests/min</span>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint">
+                  Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Allow Web Requests
+                </label>
+                <div className="allow-web-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.allowsWeb}
+                      onChange={(e) => setKeyFormData({ ...keyFormData, allowsWeb: e.target.checked })}
+                    />
+                    <span className="toggle-label">Enable web requesting</span>
+                  </label>
+                </div>
+                {keyFormData.allowsWeb && (
+                  <div className="allow-web-warning">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                    </svg>
+                    <div>
+                      <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
+                    </div>
+                  </div>
+                )}
+                <p className="form-hint">
+                  When enabled, requests can be made from any web origin without device verification.
+                </p>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleCloseEditKey}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={updatingKey || keyFormData.whitelistedUrls.length === 0}>
+                  {updatingKey ? "Updating..." : "Update Key"}
+                </button>
+              </div>
+            </form>
           </div>
-        )
+        </div>
+      )
       }
 
       {/* Partial Key Display (One-time) */}
@@ -1968,8 +2222,215 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        )
-      }
-    </div >
+        )}
+
+      {/* Play Integrity Modal */}
+      {showPlayIntegrityModal && (
+        <div className={`modal-overlay ${isClosingPlayIntegrityModal ? 'closing' : ''}`} onClick={handleClosePlayIntegrityModal}>
+          <div className={`modal-content ${isClosingPlayIntegrityModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {playIntegrityConfig ? "Update Play Integrity Key" : "Upload Play Integrity Key"}
+              </h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleClosePlayIntegrityModal}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="modal-mode-toggle">
+              <button
+                type="button"
+                className={`modal-mode-btn ${playIntegrityModalMode === "upload" ? "active" : ""}`}
+                onClick={() => handlePlayIntegrityModalModeChange("upload")}
+              >
+                Upload New Key
+              </button>
+              <button
+                type="button"
+                className={`modal-mode-btn ${playIntegrityModalMode === "link" ? "active" : ""}`}
+                onClick={() => handlePlayIntegrityModalModeChange("link")}
+              >
+                Link Existing Key
+              </button>
+            </div>
+
+            {playIntegrityModalMode === "upload" ? (
+              <form onSubmit={handleUploadPlayIntegrity} className="modal-form">
+                <div className="form-group">
+                  <label htmlFor="playintegrity-package-name" className="form-label">
+                    Android Package Name <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="playintegrity-package-name"
+                    className="form-input"
+                    value={playIntegrityPackageName}
+                    onChange={(e) => setPlayIntegrityPackageName(e.target.value)}
+                    placeholder="e.g., com.example.app"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="playintegrity-json" className="form-label">
+                    Service Account JSON <span className="required">*</span>
+                  </label>
+                  <div className="file-upload-container">
+                    <input
+                      type="file"
+                      id="playintegrity-file-upload"
+                      accept=".json"
+                      className="file-upload-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handlePlayIntegrityFileRead(file);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="playintegrity-file-upload"
+                      className={`file-upload-label ${isDraggingOverPlayIntegrity ? 'dragging' : ''}`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingOverPlayIntegrity(false);
+
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) {
+                          handlePlayIntegrityFileRead(file);
+                        }
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>{isDraggingOverPlayIntegrity ? 'Drop JSON File Here' : 'Upload JSON File'}</span>
+                    </label>
+                  </div>
+                  <textarea
+                    id="playintegrity-json"
+                    className="form-textarea"
+                    value={playIntegrityServiceAccountJson}
+                    onChange={(e) => setPlayIntegrityServiceAccountJson(e.target.value)}
+                    placeholder='{"type": "service_account", "project_id": "...", ...}'
+                    rows={8}
+                    required
+                  />
+                  <p className="form-hint">
+                    Paste your Google Cloud service account JSON here, or upload a .json file.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleClosePlayIntegrityModal}
+                  >
+                    Cancel
+                  </button>
+
+                  <button type="submit" className="btn-primary" disabled={uploadingPlayIntegrity || !playIntegrityServiceAccountJson.trim() || !playIntegrityPackageName.trim()}>
+                    {uploadingPlayIntegrity ? "Uploading..." : "Upload Key"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleLinkPlayIntegrity} className="modal-form">
+                <div className="form-group">
+                  <label htmlFor="link-playintegrity-select" className="form-label">
+                    Select Key <span className="required">*</span>
+                  </label>
+                  {loadingAvailablePlayIntegrityConfigs ? (
+                    <div className="form-loading">
+                      <div className="spinner"></div>
+                      <span>Loading available keys...</span>
+                    </div>
+                  ) : availablePlayIntegrityConfigs.length === 0 ? (
+                    <div className="form-empty">
+                      <p>No Play Integrity keys available. Please upload a key first.</p>
+                    </div>
+                  ) : (
+                    <div className="custom-key-selector-inline">
+                      {availablePlayIntegrityConfigs.map((config) => {
+                        const keyValue = config.projectID;
+                        const isSelected = selectedPlayIntegrityToLink === keyValue;
+                        return (
+                          <button
+                            key={keyValue}
+                            type="button"
+                            className={`custom-key-selector-option-inline ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSelectedPlayIntegrityToLink(keyValue);
+                            }}
+                          >
+                            <div className="custom-key-option-content">
+                              <div className="custom-key-option-header">
+                                <span className="custom-key-option-label">Client Email</span>
+                                <code className="custom-key-option-value">{config.clientEmail}</code>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="custom-key-option-check"
+                              >
+                                <path
+                                  d="M16 5L7.5 13.5L4 10"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="form-hint">
+                    Select an existing Play Integrity key to link to this project. This will copy the key from your account.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleClosePlayIntegrityModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={linkingPlayIntegrity || !selectedPlayIntegrityToLink || availablePlayIntegrityConfigs.length === 0}
+                  >
+                    {linkingPlayIntegrity ? "Linking..." : "Link Key"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
