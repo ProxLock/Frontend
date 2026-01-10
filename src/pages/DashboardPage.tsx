@@ -88,6 +88,8 @@ interface APIKey {
   partialKey?: string;
   associationId?: string;
   whitelistedUrls?: string[];
+  rateLimit?: number | null;
+  allowsWeb?: boolean;
 }
 
 interface DeviceCheckKey {
@@ -128,6 +130,8 @@ export default function DashboardPage() {
     description: "",
     apiKey: "",
     whitelistedUrls: [] as string[],
+    rateLimit: -1 as number,
+    allowsWeb: false,
   });
   const [projectFormData, setProjectFormData] = useState({
     name: "",
@@ -137,6 +141,8 @@ export default function DashboardPage() {
     name: "",
     description: "",
     whitelistedUrls: [] as string[],
+    rateLimit: -1 as number,
+    allowsWeb: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const [updatingProject, setUpdatingProject] = useState(false);
@@ -160,6 +166,11 @@ export default function DashboardPage() {
   const [newWhitelistedUrl, setNewWhitelistedUrl] = useState("");
   const [newWhitelistedUrlEdit, setNewWhitelistedUrlEdit] = useState("");
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
+  const [showBulkRateLimitModal, setShowBulkRateLimitModal] = useState(false);
+  const [isClosingBulkRateLimitModal, setIsClosingBulkRateLimitModal] = useState(false);
+  const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
+  const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
+  const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
 
   // Play Integrity state
   const [playIntegrityConfig, setPlayIntegrityConfig] = useState<PlayIntegrityConfig | null>(null);
@@ -455,6 +466,8 @@ export default function DashboardPage() {
           description: formData.description || undefined,
           apiKey: formData.apiKey || undefined,
           whitelistedUrls: formData.whitelistedUrls,
+          rateLimit: formData.rateLimit,
+          allowsWeb: formData.allowsWeb,
         }),
       });
 
@@ -471,11 +484,11 @@ export default function DashboardPage() {
         setShowPartialKey(true);
         setShowAddKeyModal(false);
         // Reset form
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       } else {
         // If no partial key returned, just close modal and refresh
         setShowAddKeyModal(false);
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       }
 
       // Refresh keys list
@@ -518,7 +531,7 @@ export default function DashboardPage() {
     setTimeout(() => {
       setShowAddKeyModal(false);
       setIsClosingModal(false);
-      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [] });
+      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrl("");
     }, 300);
   };
@@ -596,6 +609,8 @@ export default function DashboardPage() {
         name: key.name || "",
         description: key.description || "",
         whitelistedUrls: key.whitelistedUrls || [],
+        rateLimit: key.rateLimit ?? -1,
+        allowsWeb: key.allowsWeb ?? false,
       });
       setShowEditKeyModal(true);
     }
@@ -607,7 +622,7 @@ export default function DashboardPage() {
       setShowEditKeyModal(false);
       setIsClosingEditKeyModal(false);
       setEditingKeyId(null);
-      setKeyFormData({ name: "", description: "", whitelistedUrls: [] });
+      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrlEdit("");
     }, 300);
   };
@@ -631,6 +646,8 @@ export default function DashboardPage() {
           name: keyFormData.name || undefined,
           description: keyFormData.description,
           whitelistedUrls: keyFormData.whitelistedUrls,
+          rateLimit: keyFormData.rateLimit,
+          allowsWeb: keyFormData.allowsWeb,
         }),
       });
 
@@ -1020,6 +1037,69 @@ export default function DashboardPage() {
     }
   };
 
+  const handleCloseBulkRateLimitModal = () => {
+    setIsClosingBulkRateLimitModal(true);
+    setTimeout(() => {
+      setShowBulkRateLimitModal(false);
+      setIsClosingBulkRateLimitModal(false);
+      setBulkRateLimitEnabled(false);
+      setBulkRateLimitValue(60);
+    }, 300);
+  };
+
+  const handleApplyBulkRateLimit = async () => {
+    if (!projectId || keys.length === 0) return;
+
+    const rateLimit = bulkRateLimitEnabled ? bulkRateLimitValue : null;
+
+    try {
+      setApplyingBulkRateLimit(true);
+      const token = await getToken({ template: "default" });
+
+      // Update all keys in parallel
+      await Promise.all(
+        keys.map((key) =>
+          fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              name: key.name || undefined,
+              description: key.description,
+              whitelistedUrls: key.whitelistedUrls,
+              rateLimit,
+            }),
+          })
+        )
+      );
+
+      // Refresh keys list
+      const keysRes = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (keysRes.ok) {
+        const keysData = await keysRes.json();
+        setKeys(Array.isArray(keysData) ? keysData : []);
+      }
+
+      handleCloseBulkRateLimitModal();
+    } catch (err) {
+      console.error("Error applying bulk rate limit:", err);
+      setErrorToast((err as Error).message || "Failed to apply rate limit. Please try again.");
+    } finally {
+      setApplyingBulkRateLimit(false);
+    }
+  };
+
   if (isNotFound) {
     return <NotFoundPage />;
   }
@@ -1080,9 +1160,16 @@ export default function DashboardPage() {
         <div className="keys-section">
           <div className="keys-header">
             <h2 className="section-title">API Keys</h2>
-            <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
-              + Add Key
-            </button>
+            <div className="keys-header-actions">
+              {keys.length > 0 && (
+                <button className="btn-secondary" onClick={() => setShowBulkRateLimitModal(true)}>
+                  Set Rate Limit for All
+                </button>
+              )}
+              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+                + Add Key
+              </button>
+            </div>
           </div>
 
           {keys.length === 0 ? (
@@ -1099,7 +1186,18 @@ export default function DashboardPage() {
               {keys.map((key) => (
                 <div key={key.id} className="key-card">
                   <div className="key-card-header">
-                    <h3 className="key-name">{key.name || "Unnamed Key"}</h3>
+                    <div className="key-name-container">
+                      <h3 className="key-name">{key.name || "Unnamed Key"}</h3>
+                      {key.allowsWeb && (
+                        <span className="allows-web-badge" data-tooltip="Web requests enabled">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                            <path d="M2 12h20" stroke="currentColor" strokeWidth="2" />
+                            <path d="M12 2c2.5 2.5 4 5.5 4 10s-1.5 7.5-4 10c-2.5-2.5-4-5.5-4-10s1.5-7.5 4-10z" stroke="currentColor" strokeWidth="2" />
+                          </svg>
+                        </span>
+                      )}
+                    </div>
                     <div className="key-card-actions">
                       <button
                         className="key-edit-btn"
@@ -1188,6 +1286,12 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
+                    <div className="key-detail-row">
+                      <span className="key-detail-label">Rate Limit:</span>
+                      <span className="key-detail-value">
+                        {key.rateLimit != null && key.rateLimit > 0 ? `${key.rateLimit} requests/min` : "Unlimited"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1343,134 +1447,203 @@ export default function DashboardPage() {
       </div>
 
       {/* Add Key Modal */}
-      {showAddKeyModal && (
-        <div className={`modal-overlay ${isClosingModal ? 'closing' : ''}`} onClick={handleCloseModal}>
-          <div className={`modal-content ${isClosingModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Add New API Key</h2>
-              <button
-                className="modal-close-btn"
-                onClick={handleCloseModal}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleCreateKey} className="modal-form">
-              <div className="form-group">
-                <label htmlFor="key-name" className="form-label">
-                  Name <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="key-name"
-                  className="form-input"
-                  value={formData.name}
-                  onChange={(e) => handleNameChange(e.target.value, false)}
-                  placeholder="e.g., OpenAI, Stripe"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="key-description" className="form-label">
-                  Description (optional)
-                </label>
-                <textarea
-                  id="key-description"
-                  className="form-textarea"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe what this key is used for"
-                  rows={3}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="key-apiKey" className="form-label">
-                  Full API Key <span className="required">*</span>
-                </label>
-                <input
-                  type="password"
-                  id="key-apiKey"
-                  className="form-input"
-                  value={formData.apiKey}
-                  onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                  placeholder="Enter your full API key"
-                  required
-                />
-                <p className="form-hint">
-                  ⚠️ This key will be split and stored securely. You'll receive a partial key once to copy.
-                </p>
-              </div>
-              <div className="form-group">
-                <label htmlFor="key-whitelisted-urls" className="form-label">
-                  Whitelisted URLs <span className="required">*</span>
-                </label>
-                <div className="whitelisted-urls-input-group">
-                  <input
-                    type="text"
-                    id="key-whitelisted-urls"
-                    className="form-input"
-                    value={newWhitelistedUrl}
-                    onChange={(e) => setNewWhitelistedUrl(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddWhitelistedUrl(false);
-                      }
-                    }}
-                    placeholder="e.g., api.example.com or api.example.com/path"
-                  />
-                  <button
-                    type="button"
-                    className="btn-secondary btn-small"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleAddWhitelistedUrl(false);
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
-                <p className="form-hint">
-                  At least one URL is required. URLs are treated as wildcards (e.g., "api.example.com" matches "api.example.com/*"). Protocol is not required.
-                </p>
-                {formData.whitelistedUrls.length > 0 && (
-                  <div className="whitelisted-urls-list">
-                    {formData.whitelistedUrls.map((url, index) => (
-                      <div key={index} className="whitelisted-url-item">
-                        <code className="whitelisted-url-value">{url}/*</code>
-                        <button
-                          type="button"
-                          className="whitelisted-url-remove"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleRemoveWhitelistedUrl(url, false);
-                          }}
-                          title="Remove URL"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="modal-actions">
+      {
+        showAddKeyModal && (
+          <div className={`modal-overlay ${isClosingModal ? 'closing' : ''}`} onClick={handleCloseModal}>
+            <div className={`modal-content ${isClosingModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Add New API Key</h2>
                 <button
-                  type="button"
-                  className="btn-secondary"
+                  className="modal-close-btn"
                   onClick={handleCloseModal}
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" disabled={submitting || !formData.apiKey || formData.whitelistedUrls.length === 0}>
-                  {submitting ? "Creating..." : "Create Key"}
+                  ×
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleCreateKey} className="modal-form">
+                <div className="form-group">
+                  <label htmlFor="key-name" className="form-label">
+                    Name <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="key-name"
+                    className="form-input"
+                    value={formData.name}
+                    onChange={(e) => handleNameChange(e.target.value, false)}
+                    placeholder="e.g., OpenAI, Stripe"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="key-description" className="form-label">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    id="key-description"
+                    className="form-textarea"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe what this key is used for"
+                    rows={3}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="key-apiKey" className="form-label">
+                    Full API Key <span className="required">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    id="key-apiKey"
+                    className="form-input"
+                    value={formData.apiKey}
+                    onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+                    placeholder="Enter your full API key"
+                    required
+                  />
+                  <p className="form-hint">
+                    ⚠️ This key will be split and stored securely. You'll receive a partial key once to copy.
+                  </p>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="key-whitelisted-urls" className="form-label">
+                    Whitelisted URLs <span className="required">*</span>
+                  </label>
+                  <div className="whitelisted-urls-input-group">
+                    <input
+                      type="text"
+                      id="key-whitelisted-urls"
+                      className="form-input"
+                      value={newWhitelistedUrl}
+                      onChange={(e) => setNewWhitelistedUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddWhitelistedUrl(false);
+                        }
+                      }}
+                      placeholder="e.g., api.example.com or api.example.com/path"
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary btn-small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleAddWhitelistedUrl(false);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p className="form-hint">
+                    At least one URL is required. URLs are treated as wildcards (e.g., "api.example.com" matches "api.example.com/*"). Protocol is not required.
+                  </p>
+                  {formData.whitelistedUrls.length > 0 && (
+                    <div className="whitelisted-urls-list">
+                      {formData.whitelistedUrls.map((url, index) => (
+                        <div key={index} className="whitelisted-url-item">
+                          <code className="whitelisted-url-value">{url}/*</code>
+                          <button
+                            type="button"
+                            className="whitelisted-url-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemoveWhitelistedUrl(url, false);
+                            }}
+                            title="Remove URL"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Rate Limit (optional)
+                  </label>
+                  <div className="rate-limit-input-group">
+                    <label className="toggle-container">
+                      <input
+                        type="checkbox"
+                        checked={formData.rateLimit !== null && formData.rateLimit > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, rateLimit: 60 });
+                          } else {
+                            setFormData({ ...formData, rateLimit: -1 });
+                          }
+                        }}
+                      />
+                      <span className="toggle-label">Enable rate limiting</span>
+                    </label>
+                    {formData.rateLimit !== null && formData.rateLimit > 0 && (
+                      <div className="rate-limit-value-input">
+                        <input
+                          type="number"
+                          id="key-rate-limit"
+                          className="form-input"
+                          value={formData.rateLimit}
+                          onChange={(e) => setFormData({ ...formData, rateLimit: parseInt(e.target.value) || 1 })}
+                          min={1}
+                          placeholder="60"
+                        />
+                        <span className="rate-limit-unit">requests/min</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="form-hint">
+                    Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                  </p>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Allow Web Requests
+                  </label>
+                  <div className="allow-web-input-group">
+                    <label className="toggle-container">
+                      <input
+                        type="checkbox"
+                        checked={formData.allowsWeb}
+                        onChange={(e) => setFormData({ ...formData, allowsWeb: e.target.checked })}
+                      />
+                      <span className="toggle-label">Enable web requesting</span>
+                    </label>
+                  </div>
+                  {formData.allowsWeb && (
+                    <div className="allow-web-warning">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                      </svg>
+                      <div>
+                        <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
+                      </div>
+                    </div>
+                  )}
+                  <p className="form-hint">
+                    When enabled, requests can be made from any web origin without device verification.
+                  </p>
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCloseModal}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary" disabled={submitting || !formData.apiKey || formData.whitelistedUrls.length === 0}>
+                    {submitting ? "Creating..." : "Create Key"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Edit Project Modal */}
       {showEditProjectModal && (
@@ -1625,6 +1798,74 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Rate Limit (optional)
+                </label>
+                <div className="rate-limit-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.rateLimit !== null && keyFormData.rateLimit > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setKeyFormData({ ...keyFormData, rateLimit: 60 });
+                        } else {
+                          setKeyFormData({ ...keyFormData, rateLimit: -1 });
+                        }
+                      }}
+                    />
+                    <span className="toggle-label">Enable rate limiting</span>
+                  </label>
+                  {keyFormData.rateLimit !== null && keyFormData.rateLimit > 0 && (
+                    <div className="rate-limit-value-input">
+                      <input
+                        type="number"
+                        id="key-edit-rate-limit"
+                        className="form-input"
+                        value={keyFormData.rateLimit}
+                        onChange={(e) => setKeyFormData({ ...keyFormData, rateLimit: parseInt(e.target.value) || 1 })}
+                        min={1}
+                        placeholder="60"
+                      />
+                      <span className="rate-limit-unit">requests/min</span>
+                    </div>
+                  )}
+                </div>
+                <p className="form-hint">
+                  Limit the number of requests per minute for this key. Leave unchecked for unlimited requests.
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  Allow Web Requests
+                </label>
+                <div className="allow-web-input-group">
+                  <label className="toggle-container">
+                    <input
+                      type="checkbox"
+                      checked={keyFormData.allowsWeb}
+                      onChange={(e) => setKeyFormData({ ...keyFormData, allowsWeb: e.target.checked })}
+                    />
+                    <span className="toggle-label">Enable web requesting</span>
+                  </label>
+                </div>
+                {keyFormData.allowsWeb && (
+                  <div className="allow-web-warning">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                    </svg>
+                    <div>
+                      <strong>Security Warning:</strong> Enabling this allows any web service to make proxy requests using this key, bypassing device verification protection. <strong>Strongly consider enabling rate limiting above</strong> to mitigate potential abuse.
+                    </div>
+                  </div>
+                )}
+                <p className="form-hint">
+                  When enabled, requests can be made from any web origin without device verification.
+                </p>
+              </div>
               <div className="modal-actions">
                 <button
                   type="button"
@@ -1640,272 +1881,348 @@ export default function DashboardPage() {
             </form>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Partial Key Display (One-time) */}
-      {showPartialKey && (
-        <div className={`modal-overlay ${isClosingPartialKey ? 'closing' : ''}`}>
-          <div className={`partial-key-modal ${isClosingPartialKey ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-            <div className="partial-key-header">
-              <h2 className="partial-key-title">⚠️ Save Your Partial Key</h2>
-              <p className="partial-key-warning">
-                This is the only time you'll see your partial key. Copy it now!
-              </p>
-            </div>
-            <div className="partial-key-content">
-              <label className="form-label">Your Partial Key:</label>
-              <div className="partial-key-display">
-                <code className="partial-key-value">{partialKeyToShow}</code>
+      {
+        showPartialKey && (
+          <div className={`modal-overlay ${isClosingPartialKey ? 'closing' : ''}`}>
+            <div className={`partial-key-modal ${isClosingPartialKey ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="partial-key-header">
+                <h2 className="partial-key-title">⚠️ Save Your Partial Key</h2>
+                <p className="partial-key-warning">
+                  This is the only time you'll see your partial key. Copy it now!
+                </p>
               </div>
-              <p className="partial-key-instruction">
-                After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
-              </p>
-            </div>
-            <div className="partial-key-actions">
-              <button
-                className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
-                onClick={async () => {
-                  await handleCopyToClipboard(partialKeyToShow, 'partial-key');
-                  setTimeout(() => {
-                    handleClosePartialKey();
-                  }, 500);
-                }}
-              >
-                {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
-              </button>
+              <div className="partial-key-content">
+                <label className="form-label">Your Partial Key:</label>
+                <div className="partial-key-display">
+                  <code className="partial-key-value">{partialKeyToShow}</code>
+                </div>
+                <p className="partial-key-instruction">
+                  After closing, this key will never be shown again. Use it in your requests with the format: <code>%ProxLock_PARTIAL_KEY:your_partial_key%</code>
+                </p>
+              </div>
+              <div className="partial-key-actions">
+                <button
+                  className={`btn-primary ${copiedButtonId === 'partial-key' ? 'copied' : ''}`}
+                  onClick={async () => {
+                    await handleCopyToClipboard(partialKeyToShow, 'partial-key');
+                    setTimeout(() => {
+                      handleClosePartialKey();
+                    }, 500);
+                  }}
+                >
+                  {copiedButtonId === 'partial-key' ? '✓ Copied!' : 'Copy & Close'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Upload/Link DeviceCheck Key Modal */}
-      {showDeviceCheckModal && (
-        <div className={`modal-overlay ${isClosingDeviceCheckModal ? 'closing' : ''}`} onClick={handleCloseDeviceCheckModal}>
-          <div className={`modal-content ${isClosingDeviceCheckModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">
-                {deviceCheckModalMode === "upload" ? "Upload Device Check Key" : "Link Device Check Key"}
-              </h2>
-              <button
-                className="modal-close-btn"
-                onClick={handleCloseDeviceCheckModal}
-              >
-                ×
-              </button>
-            </div>
+      {
+        showDeviceCheckModal && (
+          <div className={`modal-overlay ${isClosingDeviceCheckModal ? 'closing' : ''}`} onClick={handleCloseDeviceCheckModal}>
+            <div className={`modal-content ${isClosingDeviceCheckModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">
+                  {deviceCheckModalMode === "upload" ? "Upload Device Check Key" : "Link Device Check Key"}
+                </h2>
+                <button
+                  className="modal-close-btn"
+                  onClick={handleCloseDeviceCheckModal}
+                >
+                  ×
+                </button>
+              </div>
 
-            {/* Mode Toggle */}
-            <div className="modal-mode-toggle">
-              <button
-                type="button"
-                className={`modal-mode-btn ${deviceCheckModalMode === "upload" ? "active" : ""}`}
-                onClick={() => handleDeviceCheckModalModeChange("upload")}
-              >
-                Upload New Key
-              </button>
-              <button
-                type="button"
-                className={`modal-mode-btn ${deviceCheckModalMode === "link" ? "active" : ""}`}
-                onClick={() => handleDeviceCheckModalModeChange("link")}
-              >
-                Link Existing Key
-              </button>
-            </div>
+              {/* Mode Toggle */}
+              <div className="modal-mode-toggle">
+                <button
+                  type="button"
+                  className={`modal-mode-btn ${deviceCheckModalMode === "upload" ? "active" : ""}`}
+                  onClick={() => handleDeviceCheckModalModeChange("upload")}
+                >
+                  Upload New Key
+                </button>
+                <button
+                  type="button"
+                  className={`modal-mode-btn ${deviceCheckModalMode === "link" ? "active" : ""}`}
+                  onClick={() => handleDeviceCheckModalModeChange("link")}
+                >
+                  Link Existing Key
+                </button>
+              </div>
 
-            {deviceCheckModalMode === "upload" ? (
-              <form onSubmit={handleUploadDeviceCheck} className="modal-form">
-                <div className="form-group">
-                  <label htmlFor="devicecheck-teamid" className="form-label">
-                    Team ID <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="devicecheck-teamid"
-                    className="form-input"
-                    value={deviceCheckFormData.teamID}
-                    onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, teamID: e.target.value })}
-                    placeholder="e.g., XYZ789GHI0"
-                    required
-                    minLength={10}
-                    maxLength={10}
-                    pattern=".{10}"
-                  />
-                  <p className="form-hint">
-                    Team ID must be exactly 10 characters.
-                  </p>
-                </div>
-                <div className="form-group">
-                  <label htmlFor="devicecheck-keyid" className="form-label">
-                    Key ID <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="devicecheck-keyid"
-                    className="form-input"
-                    value={deviceCheckFormData.keyID}
-                    onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, keyID: e.target.value })}
-                    placeholder="e.g., ABC123DEF4"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="devicecheck-privatekey" className="form-label">
-                    Private Key (PEM format) <span className="required">*</span>
-                  </label>
-                  <div className="file-upload-container">
-                    <input
-                      type="file"
-                      id="devicecheck-file-upload"
-                      accept=".pem,.key,.txt,.p8"
-                      className="file-upload-input"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleFileRead(file);
-                        }
-                      }}
-                    />
-                    <label
-                      htmlFor="devicecheck-file-upload"
-                      className={`file-upload-label ${isDraggingOver ? 'dragging' : ''}`}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDraggingOver(true);
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDraggingOver(false);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDraggingOver(false);
-
-                        const file = e.dataTransfer.files?.[0];
-                        if (file) {
-                          handleFileRead(file);
-                        }
-                      }}
-                    >
-                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>{isDraggingOver ? 'Drop Key File Here' : 'Upload Key File'}</span>
+              {deviceCheckModalMode === "upload" ? (
+                <form onSubmit={handleUploadDeviceCheck} className="modal-form">
+                  <div className="form-group">
+                    <label htmlFor="devicecheck-teamid" className="form-label">
+                      Team ID <span className="required">*</span>
                     </label>
+                    <input
+                      type="text"
+                      id="devicecheck-teamid"
+                      className="form-input"
+                      value={deviceCheckFormData.teamID}
+                      onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, teamID: e.target.value })}
+                      placeholder="e.g., XYZ789GHI0"
+                      required
+                      minLength={10}
+                      maxLength={10}
+                      pattern=".{10}"
+                    />
+                    <p className="form-hint">
+                      Team ID must be exactly 10 characters.
+                    </p>
                   </div>
-                  <textarea
-                    id="devicecheck-privatekey"
-                    className="form-textarea"
-                    value={deviceCheckFormData.privateKey}
-                    onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, privateKey: e.target.value })}
-                    placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
-                    rows={8}
-                    required
-                  />
-                  <p className="form-hint">
-                    Paste your ES256 private key in PEM format here, or upload a .p8 file.
-                  </p>
-                </div>
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={handleCloseDeviceCheckModal}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary" disabled={uploadingDeviceCheck || !deviceCheckFormData.teamID.trim() || deviceCheckFormData.teamID.trim().length !== 10 || !deviceCheckFormData.keyID.trim() || !deviceCheckFormData.privateKey.trim()}>
-                    {uploadingDeviceCheck ? "Uploading..." : "Upload Key"}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={handleLinkKey} className="modal-form">
-                <div className="form-group">
-                  <label htmlFor="link-key-select" className="form-label">
-                    Select Key <span className="required">*</span>
-                  </label>
-                  {loadingAvailableKeys ? (
-                    <div className="form-loading">
-                      <div className="spinner"></div>
-                      <span>Loading available keys...</span>
+                  <div className="form-group">
+                    <label htmlFor="devicecheck-keyid" className="form-label">
+                      Key ID <span className="required">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="devicecheck-keyid"
+                      className="form-input"
+                      value={deviceCheckFormData.keyID}
+                      onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, keyID: e.target.value })}
+                      placeholder="e.g., ABC123DEF4"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="devicecheck-privatekey" className="form-label">
+                      Private Key (PEM format) <span className="required">*</span>
+                    </label>
+                    <div className="file-upload-container">
+                      <input
+                        type="file"
+                        id="devicecheck-file-upload"
+                        accept=".pem,.key,.txt,.p8"
+                        className="file-upload-input"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileRead(file);
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="devicecheck-file-upload"
+                        className={`file-upload-label ${isDraggingOver ? 'dragging' : ''}`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingOver(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingOver(false);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingOver(false);
+
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) {
+                            handleFileRead(file);
+                          }
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M9 12V6M9 6L6 9M9 6L12 9M3 15H15C15.5523 15 16 14.5523 16 14V4C16 3.44772 15.5523 3 15 3H3C2.44772 3 2 3.44772 2 4V14C2 14.5523 2.44772 15 3 15Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <span>{isDraggingOver ? 'Drop Key File Here' : 'Upload Key File'}</span>
+                      </label>
                     </div>
-                  ) : availableDeviceCheckKeys.length === 0 ? (
-                    <div className="form-empty">
-                      <p>No DeviceCheck keys available. Please upload a key first.</p>
-                    </div>
-                  ) : (
-                    <div className="custom-key-selector-inline">
-                      {availableDeviceCheckKeys.map((key) => {
-                        const keyValue = `${key.teamID}-${key.keyID}`;
-                        const isSelected = selectedKeyToLink === keyValue;
-                        return (
-                          <button
-                            key={keyValue}
-                            type="button"
-                            className={`custom-key-selector-option-inline ${isSelected ? 'selected' : ''}`}
-                            onClick={() => {
-                              setSelectedKeyToLink(keyValue);
-                            }}
-                          >
-                            <div className="custom-key-option-content">
-                              <div className="custom-key-option-header">
-                                <span className="custom-key-option-label">Team ID</span>
-                                <code className="custom-key-option-value">{key.teamID}</code>
-                                <span className="custom-key-option-label" style={{ marginLeft: '1rem' }}>Key ID</span>
-                                <code className="custom-key-option-value">{key.keyID}</code>
+                    <textarea
+                      id="devicecheck-privatekey"
+                      className="form-textarea"
+                      value={deviceCheckFormData.privateKey}
+                      onChange={(e) => setDeviceCheckFormData({ ...deviceCheckFormData, privateKey: e.target.value })}
+                      placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
+                      rows={8}
+                      required
+                    />
+                    <p className="form-hint">
+                      Paste your ES256 private key in PEM format here, or upload a .p8 file.
+                    </p>
+                  </div>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={handleCloseDeviceCheckModal}
+                    >
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn-primary" disabled={uploadingDeviceCheck || !deviceCheckFormData.teamID.trim() || deviceCheckFormData.teamID.trim().length !== 10 || !deviceCheckFormData.keyID.trim() || !deviceCheckFormData.privateKey.trim()}>
+                      {uploadingDeviceCheck ? "Uploading..." : "Upload Key"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleLinkKey} className="modal-form">
+                  <div className="form-group">
+                    <label htmlFor="link-key-select" className="form-label">
+                      Select Key <span className="required">*</span>
+                    </label>
+                    {loadingAvailableKeys ? (
+                      <div className="form-loading">
+                        <div className="spinner"></div>
+                        <span>Loading available keys...</span>
+                      </div>
+                    ) : availableDeviceCheckKeys.length === 0 ? (
+                      <div className="form-empty">
+                        <p>No DeviceCheck keys available. Please upload a key first.</p>
+                      </div>
+                    ) : (
+                      <div className="custom-key-selector-inline">
+                        {availableDeviceCheckKeys.map((key) => {
+                          const keyValue = `${key.teamID}-${key.keyID}`;
+                          const isSelected = selectedKeyToLink === keyValue;
+                          return (
+                            <button
+                              key={keyValue}
+                              type="button"
+                              className={`custom-key-selector-option-inline ${isSelected ? 'selected' : ''}`}
+                              onClick={() => {
+                                setSelectedKeyToLink(keyValue);
+                              }}
+                            >
+                              <div className="custom-key-option-content">
+                                <div className="custom-key-option-header">
+                                  <span className="custom-key-option-label">Team ID</span>
+                                  <code className="custom-key-option-value">{key.teamID}</code>
+                                  <span className="custom-key-option-label" style={{ marginLeft: '1rem' }}>Key ID</span>
+                                  <code className="custom-key-option-value">{key.keyID}</code>
+                                </div>
                               </div>
-                            </div>
-                            {isSelected && (
-                              <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 20 20"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="custom-key-option-check"
-                              >
-                                <path
-                                  d="M16 5L7.5 13.5L4 10"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                              {isSelected && (
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 20 20"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="custom-key-option-check"
+                                >
+                                  <path
+                                    d="M16 5L7.5 13.5L4 10"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <p className="form-hint">
+                      Select an existing DeviceCheck key to link to this project. This will copy the key from your account.
+                    </p>
+                  </div>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={handleCloseDeviceCheckModal}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                      disabled={linkingKey || !selectedKeyToLink || availableDeviceCheckKeys.length === 0}
+                    >
+                      {linkingKey ? "Linking..." : "Link Key"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )
+      }
+
+      {/* Bulk Rate Limit Modal */}
+      {
+        showBulkRateLimitModal && (
+          <div className={`modal-overlay ${isClosingBulkRateLimitModal ? 'closing' : ''}`} onClick={handleCloseBulkRateLimitModal}>
+            <div className={`modal-content ${isClosingBulkRateLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Set Rate Limit for All Keys</h2>
+                <button
+                  className="modal-close-btn"
+                  onClick={handleCloseBulkRateLimitModal}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="modal-form">
+                <div className="form-group">
+                  <p className="form-description">
+                    Apply a rate limit to all {keys.length} key{keys.length !== 1 ? 's' : ''} in this project.
+                  </p>
+                  <div className="rate-limit-input-group">
+                    <label className="toggle-container">
+                      <input
+                        type="checkbox"
+                        checked={bulkRateLimitEnabled}
+                        onChange={(e) => setBulkRateLimitEnabled(e.target.checked)}
+                      />
+                      <span className="toggle-label">Enable rate limiting</span>
+                    </label>
+                    {bulkRateLimitEnabled && (
+                      <div className="rate-limit-value-input">
+                        <input
+                          type="number"
+                          id="bulk-rate-limit"
+                          className="form-input"
+                          value={bulkRateLimitValue}
+                          onChange={(e) => setBulkRateLimitValue(parseInt(e.target.value) || 1)}
+                          min={1}
+                          placeholder="60"
+                        />
+                        <span className="rate-limit-unit">requests/min</span>
+                      </div>
+                    )}
+                  </div>
                   <p className="form-hint">
-                    Select an existing DeviceCheck key to link to this project. This will copy the key from your account.
+                    {bulkRateLimitEnabled
+                      ? `All keys will be limited to ${bulkRateLimitValue} requests per minute.`
+                      : "All keys will have unlimited requests (no rate limit)."}
                   </p>
                 </div>
                 <div className="modal-actions">
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={handleCloseDeviceCheckModal}
+                    onClick={handleCloseBulkRateLimitModal}
                   >
                     Cancel
                   </button>
                   <button
-                    type="submit"
+                    type="button"
                     className="btn-primary"
-                    disabled={linkingKey || !selectedKeyToLink || availableDeviceCheckKeys.length === 0}
+                    onClick={handleApplyBulkRateLimit}
+                    disabled={applyingBulkRateLimit}
                   >
-                    {linkingKey ? "Linking..." : "Link Key"}
+                    {applyingBulkRateLimit ? "Applying..." : "Apply to All Keys"}
                   </button>
                 </div>
-              </form>
-            )}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Play Integrity Modal */}
       {showPlayIntegrityModal && (
