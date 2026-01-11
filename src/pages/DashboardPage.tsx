@@ -1308,16 +1308,16 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="info-alert-text">
-              <strong>Apple Platform Setup Guide</strong>
+              <strong>ProxLock Platform Setup Guide</strong>
               <span>
-                Need help setting up for iOS, macOS, or other Apple platforms? Check out our{" "}
+                Need help setting up for your platform? Check out our{" "}
                 <a
-                  href="https://docs.proxlock.dev/ios-sdk/"
+                  href="https://docs.proxlock.dev/getting-started/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="info-alert-link"
                 >
-                  iOS SDK setup guide
+                  ProxLock SDK setup guides
                 </a>
                 .
               </span>
