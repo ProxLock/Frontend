@@ -3045,7 +3045,7 @@ body {
 .sidebar-usage-container {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 0.25rem;
   margin-left: auto;
   flex-shrink: 0;
@@ -3059,14 +3059,14 @@ body {
   letter-spacing: 0.5px;
   line-height: 1;
   text-align: right;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
 }
 
 .sidebar-usage-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   background: var(--badge-bg);
   border: 1px solid var(--badge-border);
   color: var(--accent-purple-1);
@@ -3075,7 +3075,7 @@ body {
   padding: 0.375rem 0.625rem;
   border-radius: 0.375rem;
   line-height: 1;
-  width: 100%;
+  width: auto;
   box-sizing: border-box;
 }
 

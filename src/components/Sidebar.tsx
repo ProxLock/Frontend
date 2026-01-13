@@ -259,7 +259,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
             {currentRequestUsage !== null && requestLimit !== null && (
               <div className="sidebar-usage-container">
                 <span className="sidebar-usage-label">Requests</span>
-                <span className="sidebar-usage-badge">{currentRequestUsage}/{requestLimit}</span>
+                <span className="sidebar-usage-badge">{currentRequestUsage}/{requestLimit === -1 ? "∞" : requestLimit}</span>
               </div>
             )}
           </div>
