@@ -13,8 +13,8 @@ export default function PricingPage() {
         </header>
         <div className="beta-notice-wrapper">
           <div className="beta-notice">
-            <span className="beta-badge">Special Pricing</span>
-            <span>for the <strong>ESI x Korea Investments AI Agent, MCP & Sales Hackathon</strong>. Get a 90-day free trial for new Plus subscribers</span>
+            <span className="beta-badge">BETA PRICING</span>
+            Subscribe now to lock in these rates forever.
           </div>
         </div>
         <UsageAlert />
