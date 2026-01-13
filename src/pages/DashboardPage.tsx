@@ -1252,7 +1252,7 @@ export default function DashboardPage() {
                     )}
                     {key.id && (
                       <div className="key-detail-row">
-                        <span className="key-detail-label">Key ID:</span>
+                        <span className="key-detail-label">Association ID:</span>
                         <div className="key-id-container">
                           <code className="key-id">{key.id}</code>
                           <button
