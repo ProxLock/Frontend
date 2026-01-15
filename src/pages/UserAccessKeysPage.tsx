@@ -60,7 +60,7 @@ export default function UserAccessKeysPage() {
             setAccessKeyLimit(userData.accessKeyLimit ?? 0);
 
             // Access keys come from the /me endpoint as an array of objects with key and name
-            const keys: UserAccessKey[] = (userData.apiKeys || []).map((accessKey: UserAccessKey | string) =>
+            const keys: UserAccessKey[] = (userData.accessKeys || []).map((accessKey: UserAccessKey | string) =>
                 typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
             );
             setAccessKeys(keys);
@@ -87,7 +87,7 @@ export default function UserAccessKeysPage() {
 
             if (res.ok) {
                 const userData = await res.json();
-                const keys: UserAccessKey[] = (userData.apiKeys || []).map((accessKey: UserAccessKey | string) =>
+                const keys: UserAccessKey[] = (userData.accessKeys || []).map((accessKey: UserAccessKey | string) =>
                     typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
                 );
                 setAccessKeys(keys);
