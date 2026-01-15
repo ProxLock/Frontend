@@ -10,13 +10,6 @@ interface UserAccessKey {
     name: string;
 }
 
-// Determine access key limit based on subscription tier
-const getAccessKeyLimit = (subscription: string | null): number => {
-    if (!subscription || subscription === 'free') return 0; // Free tier
-    if (subscription === '10k_requests') return 1; // 10k tier
-    return -1; // 25k_requests or higher = unlimited
-};
-
 const getTierName = (subscription: string | null): string => {
     if (!subscription || subscription === 'free') return "Free";
     if (subscription === '10k_requests') return "Plus";
@@ -29,6 +22,7 @@ export default function UserAccessKeysPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
+    const [accessKeyLimit, setAccessKeyLimit] = useState<number>(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isClosingCreateModal, setIsClosingCreateModal] = useState(false);
     const [newKeyName, setNewKeyName] = useState("");
@@ -39,7 +33,6 @@ export default function UserAccessKeysPage() {
     const [errorToast, setErrorToast] = useState<string | null>(null);
     const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
 
-    const accessKeyLimit = getAccessKeyLimit(currentSubscription);
     const canCreateKey = accessKeyLimit === -1 || accessKeys.length < accessKeyLimit;
     const tierName = getTierName(currentSubscription);
 
@@ -64,6 +57,7 @@ export default function UserAccessKeysPage() {
 
             const userData = await res.json();
             setCurrentSubscription(userData.currentSubscription ?? null);
+            setAccessKeyLimit(userData.accessKeyLimit ?? 0);
 
             // Access keys come from the /me endpoint as an array of objects with key and name
             const keys: UserAccessKey[] = (userData.apiKeys || []).map((accessKey: UserAccessKey | string) =>
