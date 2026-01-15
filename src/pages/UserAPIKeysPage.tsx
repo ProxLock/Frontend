@@ -223,9 +223,9 @@ export default function UserAPIKeysPage() {
 
             {/* Header Section */}
             <header className="homepage-header">
-                <h1 className="hero-title">API Keys</h1>
+                <h1 className="hero-title">Access Keys</h1>
                 <p className="hero-subtext">
-                    Manage your personal ProxLock API keys for programmatic access.
+                    Manage your personal ProxLock access keys for programmatic access.
                 </p>
             </header>
 
@@ -237,14 +237,14 @@ export default function UserAPIKeysPage() {
                         <span className="api-keys-tier-name">{tierName}</span>
                     </div>
                     <div className="api-keys-limit-info">
-                        <span className="api-keys-limit-label">API Keys:</span>
+                        <span className="api-keys-limit-label">Access Keys:</span>
                         <span className="api-keys-limit-value">
                             {apiKeys.length}/{apiKeyLimit === -1 ? "∞" : apiKeyLimit}
                         </span>
                     </div>
                     {apiKeyLimit === 0 && (
                         <Link to="/pricing" className="api-keys-upgrade-btn">
-                            Upgrade to Create API Keys
+                            Upgrade to Create Access Keys
                         </Link>
                     )}
                 </div>
@@ -255,7 +255,7 @@ export default function UserAPIKeysPage() {
                 {loading ? (
                     <div className="loading-state">
                         <div className="spinner"></div>
-                        <p>Loading your API keys...</p>
+                        <p>Loading your access keys...</p>
                     </div>
                 ) : error ? (
                     <div className="error-state">
@@ -267,8 +267,8 @@ export default function UserAPIKeysPage() {
                 ) : apiKeyLimit === 0 ? (
                     <div className="empty-state">
                         <div className="empty-icon">🔐</div>
-                        <h2>API Keys Unavailable</h2>
-                        <p>Upgrade your plan to create personal API keys for programmatic access to ProxLock.</p>
+                        <h2>Access Keys Unavailable</h2>
+                        <p>Upgrade your plan to create personal access keys for programmatic access to ProxLock.</p>
                         <Link to="/pricing" className="btn-primary">
                             View Upgrade Options
                         </Link>
@@ -276,22 +276,22 @@ export default function UserAPIKeysPage() {
                 ) : apiKeys.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-icon">🔑</div>
-                        <h2>No API keys yet</h2>
-                        <p>Create your first API key to get programmatic access to ProxLock.</p>
+                        <h2>No access keys yet</h2>
+                        <p>Create your first access key to get programmatic access to ProxLock.</p>
                         <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-                            Create Your First API Key
+                            Create Your First Access Key
                         </button>
                     </div>
                 ) : (
                     <>
                         <div className="projects-header">
                             <div className="projects-header-title">
-                                <h2 className="section-title">Your API Keys</h2>
+                                <h2 className="section-title">Your Access Keys</h2>
                                 <span className="project-count-badge">{apiKeys.length}</span>
                             </div>
                             {canCreateKey && (
                                 <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-                                    + Create API Key
+                                    + Create Access Key
                                 </button>
                             )}
                         </div>
@@ -344,12 +344,12 @@ export default function UserAPIKeysPage() {
                 © {new Date().getFullYear()} ProxLock. All rights reserved.
             </footer>
 
-            {/* Create API Key Modal */}
+            {/* Create Access Key Modal */}
             {showCreateModal && (
                 <div className={`modal-overlay ${isClosingCreateModal ? 'closing' : ''}`} onClick={handleCloseCreateModal}>
                     <div className={`modal-content ${isClosingCreateModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2 className="modal-title">Create API Key</h2>
+                            <h2 className="modal-title">Create Access Key</h2>
                             <button className="modal-close-btn" onClick={handleCloseCreateModal}>
                                 ×
                             </button>
@@ -379,7 +379,7 @@ export default function UserAPIKeysPage() {
                                 onClick={handleCreateKey}
                                 disabled={creating}
                             >
-                                {creating ? "Creating..." : "Create API Key"}
+                                {creating ? "Creating..." : "Create Access Key"}
                             </button>
                         </div>
                     </div>
@@ -391,7 +391,7 @@ export default function UserAPIKeysPage() {
                 <div className={`modal-overlay ${isClosingNewKeyModal ? 'closing' : ''}`} onClick={handleCloseNewKeyModal}>
                     <div className={`modal-content ${isClosingNewKeyModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2 className="modal-title">API Key Created</h2>
+                            <h2 className="modal-title">Access Key Created</h2>
                             <button className="modal-close-btn" onClick={handleCloseNewKeyModal}>
                                 ×
                             </button>
@@ -401,7 +401,7 @@ export default function UserAPIKeysPage() {
                                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M16.6667 5L7.5 14.1667L3.33333 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
-                                <span>Your API key has been created successfully!</span>
+                                <span>Your access key has been created successfully!</span>
                             </div>
                             <p className="modal-description">
                                 You can copy this key anytime from your dashboard.
