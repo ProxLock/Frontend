@@ -28,8 +28,6 @@ export default function UserAPIKeysPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [isClosingModal, setIsClosingModal] = useState(false);
     const [creating, setCreating] = useState(false);
     const [newKey, setNewKey] = useState<string | null>(null);
     const [showNewKeyModal, setShowNewKeyModal] = useState(false);
@@ -124,7 +122,6 @@ export default function UserAPIKeysPage() {
 
             // Show the new key in a modal (it's only shown once)
             setNewKey(data.key);
-            handleCloseCreateModal();
             setShowNewKeyModal(true);
 
             // Refresh the list
@@ -179,14 +176,6 @@ export default function UserAPIKeysPage() {
             console.error("Failed to copy:", err);
             setErrorToast("Failed to copy to clipboard. Please copy manually.");
         }
-    };
-
-    const handleCloseCreateModal = () => {
-        setIsClosingModal(true);
-        setTimeout(() => {
-            setShowCreateModal(false);
-            setIsClosingModal(false);
-        }, 300);
     };
 
     const handleCloseNewKeyModal = () => {
@@ -332,44 +321,6 @@ export default function UserAPIKeysPage() {
             <footer className="page-footer">
                 © {new Date().getFullYear()} ProxLock. All rights reserved.
             </footer>
-
-            {/* Create API Key Modal */}
-            {showCreateModal && (
-                <div className={`modal-overlay ${isClosingModal ? 'closing' : ''}`} onClick={handleCloseCreateModal}>
-                    <div className={`modal-content ${isClosingModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2 className="modal-title">Create API Key</h2>
-                            <button className="modal-close-btn" onClick={handleCloseCreateModal}>
-                                ×
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p className="modal-description">
-                                Create a new API key for programmatic access to ProxLock. The key will only be shown once after creation.
-                            </p>
-                            <div className="modal-warning">
-                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M10 6V10M10 14H10.01M3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                <span>Make sure to copy your API key after creation. The full key will only be shown once!</span>
-                            </div>
-                        </div>
-                        <div className="modal-actions">
-                            <button type="button" className="btn-secondary" onClick={handleCloseCreateModal}>
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                className="btn-primary"
-                                onClick={handleCreateKey}
-                                disabled={creating}
-                            >
-                                {creating ? "Creating..." : "Create API Key"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* New Key Display Modal */}
             {showNewKeyModal && newKey && (
