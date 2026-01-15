@@ -7,6 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 interface UserAPIKey {
     key: string;
+    name: string;
 }
 
 // Determine API key limit based on subscription tier
@@ -28,6 +29,9 @@ export default function UserAPIKeysPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [isClosingCreateModal, setIsClosingCreateModal] = useState(false);
+    const [newKeyName, setNewKeyName] = useState("");
     const [creating, setCreating] = useState(false);
     const [newKey, setNewKey] = useState<string | null>(null);
     const [showNewKeyModal, setShowNewKeyModal] = useState(false);
@@ -61,8 +65,10 @@ export default function UserAPIKeysPage() {
             const userData = await res.json();
             setCurrentSubscription(userData.currentSubscription ?? null);
 
-            // API keys come from the /me endpoint as an array of strings
-            const keys: UserAPIKey[] = (userData.apiKeys || []).map((key: string) => ({ key }));
+            // API keys come from the /me endpoint as an array of objects with key and name
+            const keys: UserAPIKey[] = (userData.apiKeys || []).map((apiKey: UserAPIKey | string) =>
+                typeof apiKey === 'string' ? { key: apiKey, name: '' } : apiKey
+            );
             setApiKeys(keys);
         } catch (err) {
             setError((err as Error).message);
@@ -87,7 +93,9 @@ export default function UserAPIKeysPage() {
 
             if (res.ok) {
                 const userData = await res.json();
-                const keys: UserAPIKey[] = (userData.apiKeys || []).map((key: string) => ({ key }));
+                const keys: UserAPIKey[] = (userData.apiKeys || []).map((apiKey: UserAPIKey | string) =>
+                    typeof apiKey === 'string' ? { key: apiKey, name: '' } : apiKey
+                );
                 setApiKeys(keys);
             }
         } catch (err) {
@@ -111,6 +119,7 @@ export default function UserAPIKeysPage() {
                     "Content-Type": "application/json; charset=utf-8",
                 },
                 credentials: "include",
+                body: JSON.stringify({ name: newKeyName }),
             });
 
             if (!res.ok) {
@@ -120,7 +129,8 @@ export default function UserAPIKeysPage() {
 
             const data = await res.json();
 
-            // Show the new key in a modal (it's only shown once)
+            // Close create modal and show the new key
+            handleCloseCreateModal();
             setNewKey(data.key);
             setShowNewKeyModal(true);
 
@@ -132,6 +142,15 @@ export default function UserAPIKeysPage() {
         } finally {
             setCreating(false);
         }
+    };
+
+    const handleCloseCreateModal = () => {
+        setIsClosingCreateModal(true);
+        setTimeout(() => {
+            setShowCreateModal(false);
+            setIsClosingCreateModal(false);
+            setNewKeyName("");
+        }, 300);
     };
 
     const handleDeleteKey = async (key: string) => {
@@ -259,8 +278,8 @@ export default function UserAPIKeysPage() {
                         <div className="empty-icon">🔑</div>
                         <h2>No API keys yet</h2>
                         <p>Create your first API key to get programmatic access to ProxLock.</p>
-                        <button className="btn-primary" onClick={handleCreateKey} disabled={creating}>
-                            {creating ? "Creating..." : "Create Your First API Key"}
+                        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+                            Create Your First API Key
                         </button>
                     </div>
                 ) : (
@@ -271,8 +290,8 @@ export default function UserAPIKeysPage() {
                                 <span className="project-count-badge">{apiKeys.length}</span>
                             </div>
                             {canCreateKey && (
-                                <button className="btn-primary" onClick={handleCreateKey} disabled={creating}>
-                                    {creating ? "Creating..." : "+ Create API Key"}
+                                <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+                                    + Create API Key
                                 </button>
                             )}
                         </div>
@@ -280,6 +299,9 @@ export default function UserAPIKeysPage() {
                             {apiKeys.map((apiKey, index) => (
                                 <div key={index} className="api-key-card">
                                     <div className="api-key-info">
+                                        {apiKey.name && (
+                                            <div className="api-key-name">{apiKey.name}</div>
+                                        )}
                                         <div className="api-key-value">
                                             <code>{maskKey(apiKey.key)}</code>
                                             <button
@@ -322,6 +344,48 @@ export default function UserAPIKeysPage() {
                 © {new Date().getFullYear()} ProxLock. All rights reserved.
             </footer>
 
+            {/* Create API Key Modal */}
+            {showCreateModal && (
+                <div className={`modal-overlay ${isClosingCreateModal ? 'closing' : ''}`} onClick={handleCloseCreateModal}>
+                    <div className={`modal-content ${isClosingCreateModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Create API Key</h2>
+                            <button className="modal-close-btn" onClick={handleCloseCreateModal}>
+                                ×
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label htmlFor="api-key-name" className="form-label">
+                                    Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="api-key-name"
+                                    className="form-input"
+                                    value={newKeyName}
+                                    onChange={(e) => setNewKeyName(e.target.value)}
+                                    placeholder="e.g., Production Key"
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-actions">
+                            <button type="button" className="btn-secondary" onClick={handleCloseCreateModal}>
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary"
+                                onClick={handleCreateKey}
+                                disabled={creating}
+                            >
+                                {creating ? "Creating..." : "Create API Key"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* New Key Display Modal */}
             {showNewKeyModal && newKey && (
                 <div className={`modal-overlay ${isClosingNewKeyModal ? 'closing' : ''}`} onClick={handleCloseNewKeyModal}>
@@ -340,7 +404,7 @@ export default function UserAPIKeysPage() {
                                 <span>Your API key has been created successfully!</span>
                             </div>
                             <p className="modal-description">
-                                Copy your API key now. For security reasons, it won't be shown again.
+                                You can copy this key anytime from your dashboard.
                             </p>
                             <div className="new-key-display">
                                 <code>{newKey}</code>

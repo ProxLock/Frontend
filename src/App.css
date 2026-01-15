@@ -2495,7 +2495,7 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding-top: 0.5rem;
+  padding: 0.5rem 1.5rem 1.5rem;
 }
 
 .btn-secondary {
@@ -4401,6 +4401,13 @@ body {
   gap: 0.75rem;
 }
 
+.api-key-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
 .api-key-value code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
   font-size: 0.9rem;
@@ -4458,7 +4465,7 @@ body {
 
 /* Modal additions for API Keys */
 .modal-body {
-  padding: 0 1.5rem;
+  padding: 1rem 1.5rem 1.5rem;
 }
 
 .modal-description {
