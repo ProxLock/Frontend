@@ -5,13 +5,13 @@ import ErrorToast from "../components/ErrorToast";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface UserAPIKey {
+interface UserAccessKey {
     key: string;
     name: string;
 }
 
-// Determine API key limit based on subscription tier
-const getAPIKeyLimit = (subscription: string | null): number => {
+// Determine access key limit based on subscription tier
+const getAccessKeyLimit = (subscription: string | null): number => {
     if (!subscription || subscription === 'free') return 0; // Free tier
     if (subscription === '10k_requests') return 1; // 10k tier
     return -1; // 25k_requests or higher = unlimited
@@ -23,9 +23,9 @@ const getTierName = (subscription: string | null): string => {
     return "Pro";
 };
 
-export default function UserAPIKeysPage() {
+export default function UserAccessKeysPage() {
     const { getToken } = useAuth();
-    const [apiKeys, setApiKeys] = useState<UserAPIKey[]>([]);
+    const [accessKeys, setAccessKeys] = useState<UserAccessKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
@@ -39,8 +39,8 @@ export default function UserAPIKeysPage() {
     const [errorToast, setErrorToast] = useState<string | null>(null);
     const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
 
-    const apiKeyLimit = getAPIKeyLimit(currentSubscription);
-    const canCreateKey = apiKeyLimit === -1 || apiKeys.length < apiKeyLimit;
+    const accessKeyLimit = getAccessKeyLimit(currentSubscription);
+    const canCreateKey = accessKeyLimit === -1 || accessKeys.length < accessKeyLimit;
     const tierName = getTierName(currentSubscription);
 
     const fetchUserData = useCallback(async () => {
@@ -65,11 +65,11 @@ export default function UserAPIKeysPage() {
             const userData = await res.json();
             setCurrentSubscription(userData.currentSubscription ?? null);
 
-            // API keys come from the /me endpoint as an array of objects with key and name
-            const keys: UserAPIKey[] = (userData.apiKeys || []).map((apiKey: UserAPIKey | string) =>
-                typeof apiKey === 'string' ? { key: apiKey, name: '' } : apiKey
+            // Access keys come from the /me endpoint as an array of objects with key and name
+            const keys: UserAccessKey[] = (userData.apiKeys || []).map((accessKey: UserAccessKey | string) =>
+                typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
             );
-            setApiKeys(keys);
+            setAccessKeys(keys);
         } catch (err) {
             setError((err as Error).message);
             console.error("Error fetching user data:", err);
@@ -78,7 +78,7 @@ export default function UserAPIKeysPage() {
         }
     }, [getToken]);
 
-    const refreshAPIKeys = useCallback(async () => {
+    const refreshAccessKeys = useCallback(async () => {
         try {
             const token = await getToken({ template: "default" });
 
@@ -93,13 +93,13 @@ export default function UserAPIKeysPage() {
 
             if (res.ok) {
                 const userData = await res.json();
-                const keys: UserAPIKey[] = (userData.apiKeys || []).map((apiKey: UserAPIKey | string) =>
-                    typeof apiKey === 'string' ? { key: apiKey, name: '' } : apiKey
+                const keys: UserAccessKey[] = (userData.apiKeys || []).map((accessKey: UserAccessKey | string) =>
+                    typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
                 );
-                setApiKeys(keys);
+                setAccessKeys(keys);
             }
         } catch (err) {
-            console.error("Error refreshing API keys:", err);
+            console.error("Error refreshing access keys:", err);
         }
     }, [getToken]);
 
@@ -124,7 +124,7 @@ export default function UserAPIKeysPage() {
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.message || `Failed to create API key: ${res.statusText}`);
+                throw new Error(errorData.message || `Failed to create access key: ${res.statusText}`);
             }
 
             const data = await res.json();
@@ -135,10 +135,10 @@ export default function UserAPIKeysPage() {
             setShowNewKeyModal(true);
 
             // Refresh the list
-            refreshAPIKeys();
+            refreshAccessKeys();
         } catch (err) {
-            console.error("Error creating API key:", err);
-            setErrorToast((err as Error).message || "Failed to create API key. Please try again.");
+            console.error("Error creating access key:", err);
+            setErrorToast((err as Error).message || "Failed to create access key. Please try again.");
         } finally {
             setCreating(false);
         }
@@ -154,7 +154,7 @@ export default function UserAPIKeysPage() {
     };
 
     const handleDeleteKey = async (key: string) => {
-        if (!confirm("Are you sure you want to delete this API key? This action cannot be undone.")) {
+        if (!confirm("Are you sure you want to delete this access key? This action cannot be undone.")) {
             return;
         }
 
@@ -173,14 +173,14 @@ export default function UserAPIKeysPage() {
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.message || `Failed to delete API key: ${res.statusText}`);
+                throw new Error(errorData.message || `Failed to delete access key: ${res.statusText}`);
             }
 
             // Refresh the list
-            refreshAPIKeys();
+            refreshAccessKeys();
         } catch (err) {
-            console.error("Error deleting API key:", err);
-            setErrorToast((err as Error).message || "Failed to delete API key. Please try again.");
+            console.error("Error deleting access key:", err);
+            setErrorToast((err as Error).message || "Failed to delete access key. Please try again.");
         }
     };
 
@@ -239,10 +239,10 @@ export default function UserAPIKeysPage() {
                     <div className="api-keys-limit-info">
                         <span className="api-keys-limit-label">Access Keys:</span>
                         <span className="api-keys-limit-value">
-                            {apiKeys.length}/{apiKeyLimit === -1 ? "∞" : apiKeyLimit}
+                            {accessKeys.length}/{accessKeyLimit === -1 ? "∞" : accessKeyLimit}
                         </span>
                     </div>
-                    {apiKeyLimit === 0 && (
+                    {accessKeyLimit === 0 && (
                         <Link to="/pricing" className="api-keys-upgrade-btn">
                             Upgrade to Create Access Keys
                         </Link>
@@ -264,7 +264,7 @@ export default function UserAPIKeysPage() {
                             Retry
                         </button>
                     </div>
-                ) : apiKeyLimit === 0 ? (
+                ) : accessKeyLimit === 0 ? (
                     <div className="empty-state">
                         <div className="empty-icon">🔐</div>
                         <h2>Access Keys Unavailable</h2>
@@ -273,7 +273,7 @@ export default function UserAPIKeysPage() {
                             View Upgrade Options
                         </Link>
                     </div>
-                ) : apiKeys.length === 0 ? (
+                ) : accessKeys.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-icon">🔑</div>
                         <h2>No access keys yet</h2>
@@ -287,7 +287,7 @@ export default function UserAPIKeysPage() {
                         <div className="projects-header">
                             <div className="projects-header-title">
                                 <h2 className="section-title">Your Access Keys</h2>
-                                <span className="project-count-badge">{apiKeys.length}</span>
+                                <span className="project-count-badge">{accessKeys.length}</span>
                             </div>
                             {canCreateKey && (
                                 <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
@@ -296,17 +296,17 @@ export default function UserAPIKeysPage() {
                             )}
                         </div>
                         <div className="api-keys-list">
-                            {apiKeys.map((apiKey, index) => (
+                            {accessKeys.map((accessKey, index) => (
                                 <div key={index} className="api-key-card">
                                     <div className="api-key-info">
-                                        {apiKey.name && (
-                                            <div className="api-key-name">{apiKey.name}</div>
+                                        {accessKey.name && (
+                                            <div className="api-key-name">{accessKey.name}</div>
                                         )}
                                         <div className="api-key-value">
-                                            <code>{maskKey(apiKey.key)}</code>
+                                            <code>{maskKey(accessKey.key)}</code>
                                             <button
                                                 className="api-key-copy-btn"
-                                                onClick={() => handleCopyToClipboard(apiKey.key, `key-${index}`)}
+                                                onClick={() => handleCopyToClipboard(accessKey.key, `key-${index}`)}
                                                 title="Copy full key"
                                             >
                                                 {copiedButtonId === `key-${index}` ? (
@@ -324,8 +324,8 @@ export default function UserAPIKeysPage() {
                                     </div>
                                     <button
                                         className="api-key-delete-btn"
-                                        onClick={() => handleDeleteKey(apiKey.key)}
-                                        title="Delete API key"
+                                        onClick={() => handleDeleteKey(accessKey.key)}
+                                        title="Delete access key"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M2 4H14M5 4V3C5 2.44772 5.44772 2 6 2H10C10.5523 2 11 2.44772 11 3V4M12 4V13C12 13.5523 11.5523 14 11 14H5C4.44772 14 4 13.5523 4 13V4H12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
