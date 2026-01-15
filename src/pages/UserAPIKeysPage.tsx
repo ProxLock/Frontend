@@ -13,7 +13,7 @@ interface UserAPIKey {
 // Determine API key limit based on subscription tier
 const getAPIKeyLimit = (subscription: string | null): number => {
     if (!subscription || subscription === 'free') return 0; // Free tier
-    if (subscription === '10k_requests') return 5; // 10k tier
+    if (subscription === '10k_requests') return 1; // 10k tier
     return -1; // 25k_requests or higher = unlimited
 };
 
