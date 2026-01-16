@@ -64,18 +64,15 @@ export default function UpgradeBanner({ showUpgradeButton = true }: UpgradeBanne
     navigate("/pricing");
   };
 
-  const containerClass = showUpgradeButton ? "upgrade-banner" : "usage-alert";
-  const iconClass = showUpgradeButton ? "upgrade-banner-icon" : "usage-alert-icon";
-  const textClass = showUpgradeButton ? "upgrade-banner-text" : "usage-alert-text";
-  const contentClass = showUpgradeButton ? "upgrade-banner-content" : "usage-alert-content";
+  const classPrefix = showUpgradeButton ? "upgrade-banner" : "usage-alert";
 
   return (
-    <div className={containerClass}>
-      <div className={contentClass}>
-        <div className={iconClass}>
+    <div className={classPrefix}>
+      <div className={`${classPrefix}-content`}>
+        <div className={`${classPrefix}-icon`}>
           <span className="material-symbols-outlined">warning</span>
         </div>
-        <div className={textClass}>
+        <div className={`${classPrefix}-text`}>
           <strong>Low Request Limit</strong>
           <span>
             You have {remainingRequests} request{remainingRequests !== 1 ? 's' : ''} remaining ({percentageRemaining.toFixed(0)}% left). 
