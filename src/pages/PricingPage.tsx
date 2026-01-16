@@ -1,5 +1,4 @@
 import { PricingTable } from "@clerk/clerk-react";
-import UsageAlert from "../components/UsageAlert";
 
 export default function PricingPage() {
   return (
@@ -17,7 +16,6 @@ export default function PricingPage() {
             Subscribe now to lock in these rates forever.
           </div>
         </div>
-        <UsageAlert />
         <div className="pricing-table-wrapper">
           <PricingTable />
         </div>

@@ -4,7 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function UpgradeBanner() {
+interface UpgradeBannerProps {
+  showUpgradeButton?: boolean;
+}
+
+export default function UpgradeBanner({ showUpgradeButton = true }: UpgradeBannerProps) {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,15 +40,12 @@ export default function UpgradeBanner() {
 
   useEffect(() => {
     fetchUserData();
-    // Refresh every 30 seconds to keep usage up to date
     const interval = setInterval(fetchUserData, 30000);
     return () => clearInterval(interval);
   }, [fetchUserData]);
 
-  // Don't show banner on pricing page
   const isPricingPage = location.pathname === '/pricing';
 
-  // Check if we should show the banner (less than 10% remaining)
   const shouldShowBanner = 
     !isPricingPage &&
     currentRequestUsage !== null &&
@@ -60,28 +61,34 @@ export default function UpgradeBanner() {
   const percentageRemaining = ((requestLimit - currentRequestUsage) / requestLimit) * 100;
 
   const handleUpgrade = () => {
-    // Navigate to the pricing/subscription page
     navigate("/pricing");
   };
 
+  const containerClass = showUpgradeButton ? "upgrade-banner" : "usage-alert";
+  const iconClass = showUpgradeButton ? "upgrade-banner-icon" : "usage-alert-icon";
+  const textClass = showUpgradeButton ? "upgrade-banner-text" : "usage-alert-text";
+  const contentClass = showUpgradeButton ? "upgrade-banner-content" : "usage-alert-content";
+
   return (
-    <div className="upgrade-banner">
-      <div className="upgrade-banner-content">
-        <div className="upgrade-banner-icon">
+    <div className={containerClass}>
+      <div className={contentClass}>
+        <div className={iconClass}>
           <span className="material-symbols-outlined">warning</span>
         </div>
-        <div className="upgrade-banner-text">
+        <div className={textClass}>
           <strong>Low Request Limit</strong>
           <span>
             You have {remainingRequests} request{remainingRequests !== 1 ? 's' : ''} remaining ({percentageRemaining.toFixed(0)}% left). 
             Upgrade your plan to get more requests.
           </span>
         </div>
-        <div className="upgrade-banner-actions">
-          <button className="upgrade-banner-btn" onClick={handleUpgrade}>
-            Upgrade Plan
-          </button>
-        </div>
+        {showUpgradeButton && (
+          <div className="upgrade-banner-actions">
+            <button className="upgrade-banner-btn" onClick={handleUpgrade}>
+              Upgrade Plan
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
