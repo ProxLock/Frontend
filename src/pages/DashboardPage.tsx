@@ -327,8 +327,7 @@ export default function DashboardPage() {
         let projectData;
         try {
           projectData = await projectRes.json();
-        } catch (parseError) {
-          // If we can't parse the response, treat it as not found
+        } catch {
           setIsNotFound(true);
           setLoading(false);
           return;
