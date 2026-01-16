@@ -4,15 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useSignupContext } from "../contexts/SignupContext";
 import ErrorToast from "../components/ErrorToast";
+import type { Project } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface Project {
-  id?: string;
-  name?: string;
-  description: string;
-  keys?: unknown[];
-}
 
 export default function HomePage() {
   const { getToken } = useAuth();
