@@ -3584,10 +3584,10 @@ body {
 /* Beta Pricing Banner */
 .beta-banner {
   width: 100%;
-  background: linear-gradient(135deg, rgba(139, 107, 219, 0.25) 0%, rgba(139, 107, 219, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 145, 0, 0.15) 0%, rgba(255, 145, 0, 0.05) 100%);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(139, 107, 219, 0.4);
+  border: 1px solid rgba(255, 145, 0, 0.25);
   border-radius: 0.75rem;
   margin-bottom: 1.5rem;
   animation: fadeIn 0.3s ease-out;
@@ -3606,10 +3606,10 @@ body {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: rgba(139, 107, 219, 0.4);
+  background: rgba(255, 145, 0, 0.15);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
-  border: 1px solid rgba(139, 107, 219, 0.4);
+  border: 1px solid rgba(255, 145, 0, 0.25);
   border-radius: 0.5rem;
   color: var(--text-primary);
   flex-shrink: 0;
@@ -3635,11 +3635,11 @@ body {
 }
 
 .beta-banner-btn {
-  background: rgba(139, 107, 219, 0.3);
+  background: rgba(255, 145, 0, 0.15);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
   color: var(--text-primary);
-  border: 1px solid rgba(139, 107, 219, 0.5);
+  border: 1px solid rgba(255, 145, 0, 0.3);
   border-radius: 0.5rem;
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
@@ -3651,8 +3651,8 @@ body {
 }
 
 .beta-banner-btn:hover {
-  background: rgba(139, 107, 219, 0.4);
-  border-color: rgba(139, 107, 219, 0.7);
+  background: rgba(255, 145, 0, 0.25);
+  border-color: rgba(255, 145, 0, 0.5);
   transform: translateY(-1px);
 }
 
@@ -3907,8 +3907,8 @@ body {
   gap: 0.75rem;
   padding: 0.75rem 1.5rem;
   margin-bottom: 2rem;
-  background: rgba(139, 107, 219, 0.1);
-  border: 1px solid rgba(139, 107, 219, 0.2);
+  background: rgba(255, 145, 0, 0.1);
+  border: 1px solid rgba(255, 145, 0, 0.2);
   border-radius: 100px;
   color: var(--text-secondary);
   font-size: 0.95rem;
@@ -3919,7 +3919,7 @@ body {
 .beta-badge {
   display: block;
   padding: 0.25rem 0.75rem;
-  background: linear-gradient(135deg, rgb(139, 107, 219) 0%, rgb(139, 113, 199) 100%);
+  background: linear-gradient(135deg, #ffaa40 0%, #ff8c00 100%);
   border-radius: 100px;
   color: #fff;
   font-size: 0.75rem;
