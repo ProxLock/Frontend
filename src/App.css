@@ -2495,7 +2495,7 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding-top: 0.5rem;
+  padding: 0.5rem 1.5rem 1.5rem;
 }
 
 .btn-secondary {
@@ -3584,10 +3584,10 @@ body {
 /* Beta Pricing Banner */
 .beta-banner {
   width: 100%;
-  background: linear-gradient(135deg, rgba(139, 107, 219, 0.25) 0%, rgba(139, 107, 219, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(255, 145, 0, 0.15) 0%, rgba(255, 145, 0, 0.05) 100%);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(139, 107, 219, 0.4);
+  border: 1px solid rgba(255, 145, 0, 0.25);
   border-radius: 0.75rem;
   margin-bottom: 1.5rem;
   animation: fadeIn 0.3s ease-out;
@@ -3606,10 +3606,10 @@ body {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background: rgba(139, 107, 219, 0.4);
+  background: rgba(255, 145, 0, 0.15);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
-  border: 1px solid rgba(139, 107, 219, 0.4);
+  border: 1px solid rgba(255, 145, 0, 0.25);
   border-radius: 0.5rem;
   color: var(--text-primary);
   flex-shrink: 0;
@@ -3635,11 +3635,11 @@ body {
 }
 
 .beta-banner-btn {
-  background: rgba(139, 107, 219, 0.3);
+  background: rgba(255, 145, 0, 0.15);
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
   color: var(--text-primary);
-  border: 1px solid rgba(139, 107, 219, 0.5);
+  border: 1px solid rgba(255, 145, 0, 0.3);
   border-radius: 0.5rem;
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
@@ -3651,8 +3651,8 @@ body {
 }
 
 .beta-banner-btn:hover {
-  background: rgba(139, 107, 219, 0.4);
-  border-color: rgba(139, 107, 219, 0.7);
+  background: rgba(255, 145, 0, 0.25);
+  border-color: rgba(255, 145, 0, 0.5);
   transform: translateY(-1px);
 }
 
@@ -3907,8 +3907,8 @@ body {
   gap: 0.75rem;
   padding: 0.75rem 1.5rem;
   margin-bottom: 2rem;
-  background: rgba(139, 107, 219, 0.1);
-  border: 1px solid rgba(139, 107, 219, 0.2);
+  background: rgba(255, 145, 0, 0.1);
+  border: 1px solid rgba(255, 145, 0, 0.2);
   border-radius: 100px;
   color: var(--text-secondary);
   font-size: 0.95rem;
@@ -3916,10 +3916,39 @@ body {
   text-align: center;
 }
 
+.beta-notice-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.beta-notice-bottom {
+  display: inline;
+}
+
+@media (max-width: 480px) {
+  .beta-notice {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 16px;
+    font-size: 0.875rem;
+  }
+
+  .beta-notice-top {
+    display: flex;
+    justify-content: center;
+  }
+
+  .beta-notice-bottom {
+    display: block;
+  }
+}
+
 .beta-badge {
   display: block;
   padding: 0.25rem 0.75rem;
-  background: linear-gradient(135deg, rgb(139, 107, 219) 0%, rgb(139, 113, 199) 100%);
+  background: linear-gradient(135deg, #ffaa40 0%, #ff8c00 100%);
   border-radius: 100px;
   color: #fff;
   font-size: 0.75rem;
@@ -4292,4 +4321,304 @@ body {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   white-space: nowrap;
+}
+
+/* ========================================
+   User API Keys Page Styles
+   ======================================== */
+
+/* Tier Banner */
+.api-keys-tier-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.api-keys-tier-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.api-keys-tier-info,
+.api-keys-limit-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.api-keys-tier-label,
+.api-keys-limit-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.api-keys-tier-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent-purple-1);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.api-keys-limit-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-code);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+.api-keys-upgrade-btn {
+  background: linear-gradient(135deg, var(--accent-purple-1), var(--accent-purple-2));
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.api-keys-upgrade-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 107, 219, 0.4);
+}
+
+/* API Keys List */
+.api-keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* API Key Card */
+.api-key-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.api-key-card:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+}
+
+.api-key-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.api-key-value {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.api-key-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.api-key-value code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  color: var(--accent-purple-1);
+  background: var(--bg-code);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-key-copy-btn {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.api-key-copy-btn:hover {
+  background: var(--badge-bg);
+  border-color: var(--border-hover);
+  color: var(--accent-purple-1);
+}
+
+.api-key-delete-btn {
+  background: transparent;
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.api-key-delete-btn:hover {
+  background: var(--color-error-bg);
+  border-color: var(--color-error);
+}
+
+/* Modal additions for API Keys */
+.modal-body {
+  padding: 1rem 1.5rem 1.5rem;
+}
+
+.modal-description {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 1rem;
+}
+
+.modal-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modal-warning svg {
+  color: var(--color-warning);
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.modal-warning span {
+  font-size: 0.875rem;
+  color: var(--color-warning);
+  line-height: 1.5;
+}
+
+.modal-success {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.modal-success svg {
+  color: var(--color-success);
+  flex-shrink: 0;
+}
+
+.modal-success span {
+  font-size: 0.875rem;
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+/* New Key Display */
+.new-key-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-code);
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.new-key-display code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  color: var(--accent-purple-1);
+  flex: 1;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.new-key-display .api-key-copy-btn {
+  gap: 0.5rem;
+  width: auto;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Responsive adjustments for API Keys */
+@media (max-width: 768px) {
+  .api-keys-tier-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .api-keys-upgrade-btn {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  .api-key-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .api-key-value {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .api-key-value code {
+    text-align: center;
+  }
+
+  .api-key-copy-btn {
+    width: 100%;
+  }
+
+  .api-key-delete-btn {
+    justify-content: center;
+  }
+
+  .new-key-display {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .new-key-display .api-key-copy-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
