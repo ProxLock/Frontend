@@ -13,8 +13,11 @@ export default function PricingPage() {
         </header>
         <div className="beta-notice-wrapper">
           <div className="beta-notice">
-            <span className="beta-badge">BETA PRICING</span>
-            Subscribe now to lock in these rates forever.
+            <span className="beta-notice-top">
+              <span className="beta-badge">Special Pricing</span>
+              <span>for <strong>CruzHacks</strong>.</span>
+            </span>
+            <span className="beta-notice-bottom">Get a 30-day free trial for new Plus subscribers</span>
           </div>
         </div>
         <UsageAlert />

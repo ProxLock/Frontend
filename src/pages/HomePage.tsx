@@ -161,8 +161,8 @@ export default function HomePage() {
             </svg>
           </div>
           <div className="beta-banner-text">
-            <strong>Beta Pricing Available</strong>
-            <span>Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
+            <strong>Special Pricing</strong>
+            <span>for <strong>CruzHacks</strong>. Get a 30-day free trial for new Plus subscribers</span>
           </div>
           <Link to="/pricing" className="beta-banner-btn">
             View Plans
