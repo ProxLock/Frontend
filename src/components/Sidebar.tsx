@@ -207,6 +207,18 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
             <span>Home</span>
           </Link>
 
+          <Link
+            to="/api-keys"
+            className={`sidebar-nav-item ${isActive("/api-keys") ? "active" : ""}`}
+            onClick={() => setIsMobileOpen(false)}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.5 8.5C12.5 10.433 10.933 12 9 12C8.46484 12 7.96094 11.877 7.51172 11.6563L5.5 13.5H4V15H2.5V16.5H1V14.293L6.34375 8.98828C6.12305 8.53906 6 8.03516 6 7.5C6 5.567 7.567 4 9.5 4C11.433 4 13 5.567 13 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="10" cy="7" r="1.25" fill="currentColor" />
+            </svg>
+            <span>Access Keys</span>
+          </Link>
+
           <div className="sidebar-divider"></div>
 
           <div className="sidebar-section">
