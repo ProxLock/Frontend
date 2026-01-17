@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
+import type { Project } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -73,13 +74,6 @@ const getWhitelistedUrlsFromName = (name: string): string[] => {
 
   return [];
 };
-
-interface Project {
-  id?: string;
-  name?: string;
-  description: string;
-  keys?: unknown[];
-}
 
 interface APIKey {
   id?: string;
@@ -327,8 +321,7 @@ export default function DashboardPage() {
         let projectData;
         try {
           projectData = await projectRes.json();
-        } catch (parseError) {
-          // If we can't parse the response, treat it as not found
+        } catch {
           setIsNotFound(true);
           setLoading(false);
           return;

@@ -1,5 +1,4 @@
 import { PricingTable } from "@clerk/clerk-react";
-import UsageAlert from "../components/UsageAlert";
 
 export default function PricingPage() {
   return (
@@ -17,7 +16,6 @@ export default function PricingPage() {
             <span>for the <strong>CruzHacks</strong>. Get a 30-day free trial for new Plus subscribers</span>
           </div>
         </div>
-        <UsageAlert />
         <div className="pricing-table-wrapper">
           <PricingTable />
         </div>
