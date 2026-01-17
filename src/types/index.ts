@@ -4,3 +4,8 @@ export interface Project {
   description: string;
   keys?: unknown[];
 }
+
+export interface UserAccessKey {
+  key: string;
+  name: string;
+}

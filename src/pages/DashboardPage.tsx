@@ -5,6 +5,7 @@ import { useProjectsContext } from "../contexts/ProjectsContext";
 import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
 import type { Project } from "../types";
+import { copyToClipboard } from "../utils/clipboard";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -507,16 +508,14 @@ export default function DashboardPage() {
   };
 
   const handleCopyToClipboard = async (text: string, buttonId: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedButtonId(buttonId);
-      setTimeout(() => {
-        setCopiedButtonId(null);
-      }, 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-      setErrorToast("Failed to copy to clipboard. Please copy manually.");
-    }
+    await copyToClipboard(
+      text,
+      () => {
+        setCopiedButtonId(buttonId);
+        setTimeout(() => setCopiedButtonId(null), 2000);
+      },
+      setErrorToast
+    );
   };
 
   const handleCloseModal = () => {
