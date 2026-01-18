@@ -27,7 +27,8 @@ export default function PricingPage() {
   const { data: plans, isLoading } = usePlans({ for: 'user' });
   const { data: subscription, isLoading: isLoadingSubscription } = useSubscription({ for: 'user' });
 
-  // Find Plus and Pro plans from Clerk data (check both id and slug)
+  // Find Free, Plus and Pro plans from Clerk data (check both id and slug)
+  const freePlan = plans?.find(plan => plan.slug === 'free' || plan.id === 'free' || plan.name?.toLowerCase() === 'free');
   const plusPlan = plans?.find(plan => plan.id === PLUS_PLAN_ID || plan.slug === PLUS_PLAN_ID);
   const proPlan = plans?.find(plan => plan.id === PRO_PLAN_ID || plan.slug === PRO_PLAN_ID);
 
@@ -123,6 +124,12 @@ export default function PricingPage() {
               <button className="btn btn-secondary plan-btn" disabled>
                 Current Plan
               </button>
+            ) : freePlan?.id ? (
+              <CheckoutButton planId={freePlan.id} planPeriod="month">
+                <button className="btn btn-secondary plan-btn">
+                  Downgrade to Free
+                </button>
+              </CheckoutButton>
             ) : (
               <button
                 className="btn btn-secondary plan-btn"
@@ -321,6 +328,10 @@ export default function PricingPage() {
                     <td className="table-action-cell">
                       {isOnFreePlan ? (
                         <button className="btn btn-secondary table-btn" disabled>Current Plan</button>
+                      ) : freePlan?.id ? (
+                        <CheckoutButton planId={freePlan.id} planPeriod="month">
+                          <button className="btn btn-secondary table-btn">Downgrade</button>
+                        </CheckoutButton>
                       ) : (
                         <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/subscription'}>Downgrade</button>
                       )}
