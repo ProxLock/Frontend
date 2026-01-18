@@ -32,11 +32,26 @@ export default function PricingPage() {
   const plusPlan = plans?.find(plan => plan.id === PLUS_PLAN_ID || plan.slug === PLUS_PLAN_ID);
   const proPlan = plans?.find(plan => plan.id === PRO_PLAN_ID || plan.slug === PRO_PLAN_ID);
 
-  // Determine user's current plan
-  const currentPlanId = subscription?.subscriptionItems?.[0]?.plan?.id ?? null;
-  const isOnFreePlan = !subscription || !currentPlanId;
+  // Find active and upcoming subscription items
+  const activeItem = subscription?.subscriptionItems?.find(item => item.status === 'active');
+  const upcomingItem = subscription?.subscriptionItems?.find(item => item.status === 'upcoming');
+
+  // Determine user's current active plan
+  const currentPlanId = activeItem?.plan?.id ?? null;
+  const isOnFreePlan = !subscription || !currentPlanId || currentPlanId === freePlan?.id;
   const isOnPlusPlan = currentPlanId === PLUS_PLAN_ID || currentPlanId === plusPlan?.id;
   const isOnProPlan = currentPlanId === PRO_PLAN_ID || currentPlanId === proPlan?.id;
+
+  // Determine upcoming plan change (if any)
+  const upcomingPlanId = upcomingItem?.plan?.id ?? null;
+  const switchingToFree = upcomingPlanId === freePlan?.id || (upcomingPlanId && (upcomingPlanId === 'free' || upcomingItem?.plan?.name?.toLowerCase() === 'free'));
+  const switchingToPlus = upcomingPlanId === PLUS_PLAN_ID || upcomingPlanId === plusPlan?.id;
+  const switchingToPro = upcomingPlanId === PRO_PLAN_ID || upcomingPlanId === proPlan?.id;
+  const hasPendingChange = !!upcomingItem;
+
+  // Get the period end date for display
+  const periodEndDate = activeItem?.periodEnd;
+  const formattedPeriodEnd = periodEndDate ? periodEndDate.toLocaleDateString() : null;
 
   // Use Clerk data or fallback values
   const plusPrice = plusPlan?.fee?.amountFormatted ?? FALLBACK_PLANS.plus.price;
@@ -113,14 +128,24 @@ export default function PricingPage() {
 
         <div className="pricing-grid">
           {/* Free Plan */}
-          <div className="pricing-card">
+          <div className={`pricing-card ${switchingToFree ? 'pending-upgrade' : ''}`}>
             <h3 className="plan-name">Free</h3>
+            {switchingToFree && (
+              <span className="plan-pending-badge upcoming">Starts {formattedPeriodEnd}</span>
+            )}
+            {isOnFreePlan && hasPendingChange && !switchingToFree && (
+              <span className="plan-pending-badge ending">Ends {formattedPeriodEnd}</span>
+            )}
             <div className="plan-price">
               <span className="currency">$</span>0
             </div>
             <p className="plan-billing">Always free</p>
             <p className="plan-description">Get up to 3,000 proxy requests each month.</p>
-            {isOnFreePlan ? (
+            {switchingToFree ? (
+              <button className="btn btn-secondary plan-btn" disabled>
+                Switching on {formattedPeriodEnd}
+              </button>
+            ) : isOnFreePlan ? (
               <button className="btn btn-secondary plan-btn" disabled>
                 Current Plan
               </button>
@@ -141,44 +166,68 @@ export default function PricingPage() {
           </div>
 
           {/* Plus Plan */}
-          <div className={`pricing-card featured ${isLoading || isLoadingSubscription ? 'loading' : ''}`}>
+          <div className={`pricing-card featured ${isLoading || isLoadingSubscription ? 'loading' : ''} ${switchingToPlus ? 'pending-upgrade' : ''}`}>
             <h3 className="plan-name">{plusPlan?.name ?? FALLBACK_PLANS.plus.name}</h3>
+            {switchingToPlus && (
+              <span className="plan-pending-badge upcoming">Starts {formattedPeriodEnd}</span>
+            )}
+            {isOnPlusPlan && hasPendingChange && !switchingToPlus && (
+              <span className="plan-pending-badge ending">Ends {formattedPeriodEnd}</span>
+            )}
             <div className="plan-price">
               <span className="currency">$</span>{plusPrice}
               <span className="period">/month</span>
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{plusDescription}</p>
-            {renderPlanButton(
-              plusPlan?.id || PLUS_PLAN_ID,
-              isOnPlusPlan,
-              true,
-              isOnFreePlan
-                ? `Start ${plusFreeTrialDays} Day Special Free Trial`
-                : isOnProPlan
-                  ? 'Downgrade to Plus'
-                  : 'Switch to Plus'
+            {switchingToPlus ? (
+              <button className="btn btn-primary plan-btn" disabled>
+                Switching on {formattedPeriodEnd}
+              </button>
+            ) : (
+              renderPlanButton(
+                plusPlan?.id || PLUS_PLAN_ID,
+                isOnPlusPlan,
+                true,
+                isOnFreePlan
+                  ? `Start ${plusFreeTrialDays} Day Special Free Trial`
+                  : isOnProPlan
+                    ? 'Downgrade to Plus'
+                    : 'Switch to Plus'
+              )
             )}
           </div>
 
           {/* Pro Plan */}
-          <div className={`pricing-card ${isLoading || isLoadingSubscription ? 'loading' : ''}`}>
+          <div className={`pricing-card ${isLoading || isLoadingSubscription ? 'loading' : ''} ${switchingToPro ? 'pending-upgrade' : ''}`}>
             <h3 className="plan-name">{proPlan?.name ?? FALLBACK_PLANS.pro.name}</h3>
+            {switchingToPro && (
+              <span className="plan-pending-badge upcoming">Starts {formattedPeriodEnd}</span>
+            )}
+            {isOnProPlan && hasPendingChange && !switchingToPro && (
+              <span className="plan-pending-badge ending">Ends {formattedPeriodEnd}</span>
+            )}
             <div className="plan-price">
               <span className="currency">$</span>{proPrice}
               <span className="period">/month</span>
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{proDescription}</p>
-            {renderPlanButton(
-              proPlan?.id || PRO_PLAN_ID,
-              isOnProPlan,
-              false,
-              isOnFreePlan
-                ? `Start ${proFreeTrialDays} Day Free Trial`
-                : isOnPlusPlan
-                  ? 'Upgrade to Pro'
-                  : 'Switch to Pro'
+            {switchingToPro ? (
+              <button className="btn btn-secondary plan-btn" disabled>
+                Switching on {formattedPeriodEnd}
+              </button>
+            ) : (
+              renderPlanButton(
+                proPlan?.id || PRO_PLAN_ID,
+                isOnProPlan,
+                false,
+                isOnFreePlan
+                  ? `Start ${proFreeTrialDays} Day Free Trial`
+                  : isOnPlusPlan
+                    ? 'Upgrade to Pro'
+                    : 'Switch to Pro'
+              )
             )}
           </div>
 
