@@ -53,6 +53,9 @@ export default function PricingPage() {
   const periodEndDate = activeItem?.periodEnd;
   const formattedPeriodEnd = periodEndDate ? periodEndDate.toLocaleDateString() : null;
 
+  // Check trial eligibility
+  const eligibleForFreeTrial = subscription?.eligibleForFreeTrial ?? true;
+
   // Use Clerk data or fallback values
   const plusPrice = plusPlan?.fee?.amountFormatted ?? FALLBACK_PLANS.plus.price;
   const plusDescription = plusPlan?.description ?? FALLBACK_PLANS.plus.description;
@@ -197,11 +200,11 @@ export default function PricingPage() {
                 plusPlan?.id || PLUS_PLAN_ID,
                 isOnPlusPlan,
                 true,
-                isOnFreePlan
-                  ? `Start ${plusFreeTrialDays} Day Special Free Trial`
+                eligibleForFreeTrial && plusFreeTrialDays
+                  ? `Start ${plusFreeTrialDays} Day Free Trial`
                   : isOnProPlan
                     ? 'Downgrade to Plus'
-                    : 'Switch to Plus',
+                    : 'Subscribe to Plus',
                 false,
                 isOnPlusPlan && hasPendingChange ? formattedPeriodEnd : null
               )
@@ -226,11 +229,11 @@ export default function PricingPage() {
                 proPlan?.id || PRO_PLAN_ID,
                 isOnProPlan,
                 false,
-                isOnFreePlan
+                eligibleForFreeTrial && proFreeTrialDays
                   ? `Start ${proFreeTrialDays} Day Free Trial`
                   : isOnPlusPlan
                     ? 'Upgrade to Pro'
-                    : 'Switch to Pro',
+                    : 'Subscribe to Pro',
                 false,
                 isOnProPlan && hasPendingChange ? formattedPeriodEnd : null
               )
@@ -397,7 +400,7 @@ export default function PricingPage() {
                           plusPlan?.id || PLUS_PLAN_ID,
                           isOnPlusPlan,
                           true,
-                          isOnFreePlan ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Switch',
+                          eligibleForFreeTrial && plusFreeTrialDays ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Subscribe',
                           true
                         )}
                       </td>
@@ -406,7 +409,7 @@ export default function PricingPage() {
                           proPlan?.id || PRO_PLAN_ID,
                           isOnProPlan,
                           false,
-                          isOnPlusPlan ? 'Upgrade' : isOnFreePlan ? `Start ${proFreeTrialDays} Day Trial` : 'Switch',
+                          eligibleForFreeTrial && proFreeTrialDays ? `Start ${proFreeTrialDays} Day Trial` : isOnPlusPlan ? 'Upgrade' : 'Subscribe',
                           true
                         )}
                       </td>
