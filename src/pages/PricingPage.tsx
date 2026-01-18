@@ -385,7 +385,16 @@ export default function PricingPage() {
                     <tr className="table-actions-row">
                       <td></td>
                       <td className="table-action-cell">
-                        {isOnFreePlan ? (
+                        {switchingToFree ? (
+                          <button className="btn btn-secondary table-btn" disabled>Switching</button>
+                        ) : isOnFreePlan && hasPendingChange && freePlan?.id ? (
+                          <CheckoutButton planId={freePlan.id} planPeriod="month">
+                            <button className="btn btn-secondary table-btn has-secondary">
+                              <span>Resubscribe</span>
+                              <span className="btn-secondary-text">Ends {formattedPeriodEnd}</span>
+                            </button>
+                          </CheckoutButton>
+                        ) : isOnFreePlan ? (
                           <button className="btn btn-secondary table-btn" disabled>Current Plan</button>
                         ) : freePlan?.id ? (
                           <CheckoutButton planId={freePlan.id} planPeriod="month">
@@ -396,21 +405,31 @@ export default function PricingPage() {
                         )}
                       </td>
                       <td className="table-action-cell featured-column">
-                        {renderPlanButton(
-                          plusPlan?.id || PLUS_PLAN_ID,
-                          isOnPlusPlan,
-                          true,
-                          eligibleForFreeTrial && plusFreeTrialDays ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Subscribe',
-                          true
+                        {switchingToPlus ? (
+                          <button className="btn btn-primary table-btn" disabled>Switching</button>
+                        ) : (
+                          renderPlanButton(
+                            plusPlan?.id || PLUS_PLAN_ID,
+                            isOnPlusPlan,
+                            true,
+                            eligibleForFreeTrial && plusFreeTrialDays ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Subscribe',
+                            true,
+                            isOnPlusPlan && hasPendingChange ? formattedPeriodEnd : null
+                          )
                         )}
                       </td>
                       <td className="table-action-cell">
-                        {renderPlanButton(
-                          proPlan?.id || PRO_PLAN_ID,
-                          isOnProPlan,
-                          false,
-                          eligibleForFreeTrial && proFreeTrialDays ? `Start ${proFreeTrialDays} Day Trial` : isOnPlusPlan ? 'Upgrade' : 'Subscribe',
-                          true
+                        {switchingToPro ? (
+                          <button className="btn btn-secondary table-btn" disabled>Switching</button>
+                        ) : (
+                          renderPlanButton(
+                            proPlan?.id || PRO_PLAN_ID,
+                            isOnProPlan,
+                            false,
+                            eligibleForFreeTrial && proFreeTrialDays ? `Start ${proFreeTrialDays} Day Trial` : isOnPlusPlan ? 'Upgrade' : 'Subscribe',
+                            true,
+                            isOnProPlan && hasPendingChange ? formattedPeriodEnd : null
+                          )
                         )}
                       </td>
                     </tr>
