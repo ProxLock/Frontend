@@ -1,4 +1,4 @@
-import { usePlans, CheckoutButton } from '@clerk/clerk-react/experimental';
+import { usePlans, useSubscription, CheckoutButton } from '@clerk/clerk-react/experimental';
 import UsageAlert from "../components/UsageAlert";
 
 // Plan IDs from Clerk
@@ -25,10 +25,17 @@ const EMAIL_CONTACT = 'mailto:contact@proxlock.com';
 
 export default function PricingPage() {
   const { data: plans, isLoading } = usePlans({ for: 'user' });
+  const { data: subscription, isLoading: isLoadingSubscription } = useSubscription({ for: 'user' });
 
   // Find Plus and Pro plans from Clerk data (check both id and slug)
   const plusPlan = plans?.find(plan => plan.id === PLUS_PLAN_ID || plan.slug === PLUS_PLAN_ID);
   const proPlan = plans?.find(plan => plan.id === PRO_PLAN_ID || plan.slug === PRO_PLAN_ID);
+
+  // Determine user's current plan
+  const currentPlanId = subscription?.subscriptionItems?.[0]?.plan?.id ?? null;
+  const isOnFreePlan = !subscription || !currentPlanId;
+  const isOnPlusPlan = currentPlanId === PLUS_PLAN_ID || currentPlanId === plusPlan?.id;
+  const isOnProPlan = currentPlanId === PRO_PLAN_ID || currentPlanId === proPlan?.id;
 
   // Use Clerk data or fallback values
   const plusPrice = plusPlan?.fee?.amountFormatted ?? FALLBACK_PLANS.plus.price;
@@ -43,6 +50,46 @@ export default function PricingPage() {
     // Navigate to subscription management or checkout
     // For now, this uses the Subscription component's changeToModal
     window.location.href = `/subscription?plan=${planId}`;
+  };
+
+  // Helper to render plan button
+  const renderPlanButton = (
+    planId: string | undefined,
+    isCurrentPlan: boolean,
+    isPrimary: boolean,
+    buttonText: string,
+    isTableBtn?: boolean
+  ) => {
+    const btnClass = isTableBtn
+      ? `btn ${isPrimary ? 'btn-primary' : 'btn-secondary'} table-btn`
+      : `btn ${isPrimary ? 'btn-primary' : 'btn-secondary'} plan-btn`;
+
+    if (isCurrentPlan) {
+      return (
+        <button className={btnClass} disabled>
+          Current Plan
+        </button>
+      );
+    }
+
+    if (planId) {
+      return (
+        <CheckoutButton planId={planId} planPeriod="month">
+          <button className={btnClass}>
+            {buttonText}
+          </button>
+        </CheckoutButton>
+      );
+    }
+
+    return (
+      <button
+        className={btnClass}
+        onClick={() => handleSelectPlan(planId || '')}
+      >
+        {buttonText}
+      </button>
+    );
   };
 
   return (
@@ -72,16 +119,22 @@ export default function PricingPage() {
             </div>
             <p className="plan-billing">Always free</p>
             <p className="plan-description">Get up to 3,000 proxy requests each month.</p>
-            <button
-              className="btn btn-secondary plan-btn"
-              onClick={() => window.location.href = '/'}
-            >
-              Current Plan
-            </button>
+            {isOnFreePlan ? (
+              <button className="btn btn-secondary plan-btn" disabled>
+                Current Plan
+              </button>
+            ) : (
+              <button
+                className="btn btn-secondary plan-btn"
+                onClick={() => window.location.href = '/subscription'}
+              >
+                Downgrade to Free
+              </button>
+            )}
           </div>
 
           {/* Plus Plan */}
-          <div className={`pricing-card featured ${isLoading ? 'loading' : ''}`}>
+          <div className={`pricing-card featured ${isLoading || isLoadingSubscription ? 'loading' : ''}`}>
             <h3 className="plan-name">{plusPlan?.name ?? FALLBACK_PLANS.plus.name}</h3>
             <div className="plan-price">
               <span className="currency">$</span>{plusPrice}
@@ -89,24 +142,20 @@ export default function PricingPage() {
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{plusDescription}</p>
-            {plusPlan?.id ? (
-              <CheckoutButton planId={plusPlan.id} planPeriod="month">
-                <button className="btn btn-primary plan-btn">
-                  Start {plusFreeTrialDays} Day Special Free Trial
-                </button>
-              </CheckoutButton>
-            ) : (
-              <button
-                className="btn btn-primary plan-btn"
-                onClick={() => handleSelectPlan(PLUS_PLAN_ID)}
-              >
-                Start {plusFreeTrialDays} Day Special Free Trial
-              </button>
+            {renderPlanButton(
+              plusPlan?.id || PLUS_PLAN_ID,
+              isOnPlusPlan,
+              true,
+              isOnFreePlan
+                ? `Start ${plusFreeTrialDays} Day Special Free Trial`
+                : isOnProPlan
+                  ? 'Downgrade to Plus'
+                  : 'Switch to Plus'
             )}
           </div>
 
           {/* Pro Plan */}
-          <div className={`pricing-card ${isLoading ? 'loading' : ''}`}>
+          <div className={`pricing-card ${isLoading || isLoadingSubscription ? 'loading' : ''}`}>
             <h3 className="plan-name">{proPlan?.name ?? FALLBACK_PLANS.pro.name}</h3>
             <div className="plan-price">
               <span className="currency">$</span>{proPrice}
@@ -114,19 +163,15 @@ export default function PricingPage() {
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{proDescription}</p>
-            {proPlan?.id ? (
-              <CheckoutButton planId={proPlan.id} planPeriod="month">
-                <button className="btn btn-secondary plan-btn">
-                  Start {proFreeTrialDays} Day Free Trial
-                </button>
-              </CheckoutButton>
-            ) : (
-              <button
-                className="btn btn-secondary plan-btn"
-                onClick={() => handleSelectPlan(PRO_PLAN_ID)}
-              >
-                Start {proFreeTrialDays} Day Free Trial
-              </button>
+            {renderPlanButton(
+              proPlan?.id || PRO_PLAN_ID,
+              isOnProPlan,
+              false,
+              isOnFreePlan
+                ? `Start ${proFreeTrialDays} Day Free Trial`
+                : isOnPlusPlan
+                  ? 'Upgrade to Pro'
+                  : 'Switch to Pro'
             )}
           </div>
 
@@ -274,24 +319,28 @@ export default function PricingPage() {
                   <tr className="table-actions-row">
                     <td></td>
                     <td className="table-action-cell">
-                      <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/'}>Current Plan</button>
+                      {isOnFreePlan ? (
+                        <button className="btn btn-secondary table-btn" disabled>Current Plan</button>
+                      ) : (
+                        <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/subscription'}>Downgrade</button>
+                      )}
                     </td>
                     <td className="table-action-cell featured-column">
-                      {plusPlan?.id ? (
-                        <CheckoutButton planId={plusPlan.id} planPeriod="month">
-                          <button className="btn btn-primary table-btn">Start {plusFreeTrialDays} Day Trial</button>
-                        </CheckoutButton>
-                      ) : (
-                        <button className="btn btn-primary table-btn" onClick={() => handleSelectPlan(PLUS_PLAN_ID)}>Start {plusFreeTrialDays} Day Trial</button>
+                      {renderPlanButton(
+                        plusPlan?.id || PLUS_PLAN_ID,
+                        isOnPlusPlan,
+                        true,
+                        isOnFreePlan ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Switch',
+                        true
                       )}
                     </td>
                     <td className="table-action-cell">
-                      {proPlan?.id ? (
-                        <CheckoutButton planId={proPlan.id} planPeriod="month">
-                          <button className="btn btn-secondary table-btn">Start {proFreeTrialDays} Day Trial</button>
-                        </CheckoutButton>
-                      ) : (
-                        <button className="btn btn-secondary table-btn" onClick={() => handleSelectPlan(PRO_PLAN_ID)}>Start {proFreeTrialDays} Day Trial</button>
+                      {renderPlanButton(
+                        proPlan?.id || PRO_PLAN_ID,
+                        isOnProPlan,
+                        false,
+                        isOnPlusPlan ? 'Upgrade' : isOnFreePlan ? `Start ${proFreeTrialDays} Day Trial` : 'Switch',
+                        true
                       )}
                     </td>
                   </tr>
