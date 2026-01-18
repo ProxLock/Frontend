@@ -1,4 +1,4 @@
-import { usePlans } from '@clerk/clerk-react/experimental';
+import { usePlans, CheckoutButton } from '@clerk/clerk-react/experimental';
 import UsageAlert from "../components/UsageAlert";
 
 // Plan IDs from Clerk
@@ -89,12 +89,20 @@ export default function PricingPage() {
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{plusDescription}</p>
-            <button
-              className="btn btn-primary plan-btn"
-              onClick={() => handleSelectPlan(PLUS_PLAN_ID)}
-            >
-              Start {plusFreeTrialDays} Day Special Free Trial
-            </button>
+            {plusPlan?.id ? (
+              <CheckoutButton planId={plusPlan.id} planPeriod="month">
+                <button className="btn btn-primary plan-btn">
+                  Start {plusFreeTrialDays} Day Special Free Trial
+                </button>
+              </CheckoutButton>
+            ) : (
+              <button
+                className="btn btn-primary plan-btn"
+                onClick={() => handleSelectPlan(PLUS_PLAN_ID)}
+              >
+                Start {plusFreeTrialDays} Day Special Free Trial
+              </button>
+            )}
           </div>
 
           {/* Pro Plan */}
@@ -106,12 +114,20 @@ export default function PricingPage() {
             </div>
             <p className="plan-billing">Only billed monthly</p>
             <p className="plan-description">{proDescription}</p>
-            <button
-              className="btn btn-secondary plan-btn"
-              onClick={() => handleSelectPlan(PRO_PLAN_ID)}
-            >
-              Start {proFreeTrialDays} Day Free Trial
-            </button>
+            {proPlan?.id ? (
+              <CheckoutButton planId={proPlan.id} planPeriod="month">
+                <button className="btn btn-secondary plan-btn">
+                  Start {proFreeTrialDays} Day Free Trial
+                </button>
+              </CheckoutButton>
+            ) : (
+              <button
+                className="btn btn-secondary plan-btn"
+                onClick={() => handleSelectPlan(PRO_PLAN_ID)}
+              >
+                Start {proFreeTrialDays} Day Free Trial
+              </button>
+            )}
           </div>
 
           {/* Enterprise Plan */}
@@ -261,10 +277,22 @@ export default function PricingPage() {
                       <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/'}>Current Plan</button>
                     </td>
                     <td className="table-action-cell featured-column">
-                      <button className="btn btn-primary table-btn" onClick={() => handleSelectPlan(PLUS_PLAN_ID)}>Start {plusFreeTrialDays} Day Trial</button>
+                      {plusPlan?.id ? (
+                        <CheckoutButton planId={plusPlan.id} planPeriod="month">
+                          <button className="btn btn-primary table-btn">Start {plusFreeTrialDays} Day Trial</button>
+                        </CheckoutButton>
+                      ) : (
+                        <button className="btn btn-primary table-btn" onClick={() => handleSelectPlan(PLUS_PLAN_ID)}>Start {plusFreeTrialDays} Day Trial</button>
+                      )}
                     </td>
                     <td className="table-action-cell">
-                      <button className="btn btn-secondary table-btn" onClick={() => handleSelectPlan(PRO_PLAN_ID)}>Start {proFreeTrialDays} Day Trial</button>
+                      {proPlan?.id ? (
+                        <CheckoutButton planId={proPlan.id} planPeriod="month">
+                          <button className="btn btn-secondary table-btn">Start {proFreeTrialDays} Day Trial</button>
+                        </CheckoutButton>
+                      ) : (
+                        <button className="btn btn-secondary table-btn" onClick={() => handleSelectPlan(PRO_PLAN_ID)}>Start {proFreeTrialDays} Day Trial</button>
+                      )}
                     </td>
                   </tr>
                 </tfoot>

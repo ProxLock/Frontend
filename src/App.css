@@ -561,7 +561,7 @@ body {
   position: fixed;
   top: 1.5rem;
   right: 1.5rem;
-  z-index: 1000;
+  z-index: 50;
   animation: slideInRight 0.3s ease;
 }
 
@@ -2666,7 +2666,9 @@ body {
   position: fixed;
   top: 1.5rem;
   right: 1.5rem;
-  z-index: 100;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
 }
 
 /* Sidebar Mobile Toggle */
@@ -2675,7 +2677,7 @@ body {
   position: fixed;
   top: 1.5rem;
   left: 1.5rem;
-  z-index: 101;
+  z-index: 21;
   background: var(--bg-sidebar);
   border: 1px solid var(--border-dashed);
   color: var(--accent-purple-light);
@@ -2705,9 +2707,10 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  right: 0;
   bottom: 0;
   background: var(--overlay-bg);
-  z-index: 49;
+  z-index: 19;
   backdrop-filter: blur(2px);
 }
 
@@ -2728,7 +2731,7 @@ body {
   border-right: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
-  z-index: 50;
+  z-index: 20;
   backdrop-filter: blur(10px);
   transform: translateX(0);
   transition: transform 0.3s ease;
@@ -3686,7 +3689,7 @@ body {
 .upgrade-banner {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 10;
   width: 100%;
   background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 193, 7, 0.08) 100%);
   backdrop-filter: blur(12px) saturate(180%);
@@ -3864,7 +3867,7 @@ body {
   margin: 0 auto;
   text-align: center;
   position: relative;
-  z-index: 1;
+  z-index: 0;
 }
 
 .pricing-page-title {
