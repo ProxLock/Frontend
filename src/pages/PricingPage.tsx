@@ -4,9 +4,16 @@ import UsageAlert from "../components/UsageAlert";
 // Plan IDs from Clerk
 const PLUS_PLAN_ID = '10k_requests';
 const PRO_PLAN_ID = '25k_requests';
+const FREE_PLAN_ID = 'free_user';
 
 // Fallback values if plans fail to load
 const FALLBACK_PLANS = {
+  free: {
+    name: 'Free',
+    price: '0',
+    description: 'Get up to 3,000 proxy requests each month.',
+    freeTrialDays: 0,
+  },
   plus: {
     name: 'Plus',
     price: '9.99',
@@ -28,7 +35,7 @@ export default function PricingPage() {
   const { data: subscription, isLoading: isLoadingSubscription } = useSubscription({ for: 'user' });
 
   // Find Free, Plus and Pro plans from Clerk data (check both id and slug)
-  const freePlan = plans?.find(plan => plan.slug === 'free' || plan.id === 'free' || plan.name?.toLowerCase() === 'free');
+  const freePlan = plans?.find(plan => plan.id === FREE_PLAN_ID || plan.slug === FREE_PLAN_ID);
   const plusPlan = plans?.find(plan => plan.id === PLUS_PLAN_ID || plan.slug === PLUS_PLAN_ID);
   const proPlan = plans?.find(plan => plan.id === PRO_PLAN_ID || plan.slug === PRO_PLAN_ID);
 
@@ -57,6 +64,8 @@ export default function PricingPage() {
   const eligibleForFreeTrial = subscription?.eligibleForFreeTrial ?? true;
 
   // Use Clerk data or fallback values
+  const freeDescription = freePlan?.description ?? FALLBACK_PLANS.free.description;
+
   const plusPrice = plusPlan?.fee?.amountFormatted ?? FALLBACK_PLANS.plus.price;
   const plusDescription = plusPlan?.description ?? FALLBACK_PLANS.plus.description;
   const plusFreeTrialDays = plusPlan?.freeTrialDays ?? FALLBACK_PLANS.plus.freeTrialDays;
@@ -150,7 +159,7 @@ export default function PricingPage() {
               <span className="currency">$</span>0
             </div>
             <p className="plan-billing">Always free</p>
-            <p className="plan-description">Get up to 3,000 proxy requests each month.</p>
+            <p className="plan-description">{freeDescription}</p>
             {switchingToFree ? (
               <button className="btn btn-secondary plan-btn" disabled>
                 Switching on {formattedPeriodEnd}
@@ -255,190 +264,170 @@ export default function PricingPage() {
         </div>
 
         {/* Features Comparison Table */}
-        {
-          (plusPlan?.features?.length || proPlan?.features?.length) && (
-            <div className="features-table-section">
-              <h2 className="features-table-title">Compare Features</h2>
-              <div className="features-table-wrapper">
-                <table className="features-table">
-                  <thead>
-                    <tr>
-                      <th>Feature</th>
-                      <th>Free</th>
-                      <th className="featured-column">Plus</th>
-                      <th>Pro</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Collect all unique features from Plus and Pro plans */}
-                    {(() => {
-                      // Pattern matchers for consolidated rows
-                      const requestsPattern = /requests?/i;
-                      const accessKeysPattern = /access\s*key/i;
+        {(plusPlan?.features?.length || proPlan?.features?.length) && (
+          <div className="features-table-section">
+            <h2 className="features-table-title">Compare Features</h2>
+            <div className="features-table-wrapper">
+              <table className="features-table">
+                <thead>
+                  <tr>
+                    <th>Feature</th>
+                    <th>Free</th>
+                    <th className="featured-column">Plus</th>
+                    <th>Pro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Collect all unique features from all plans */}
+                  {(() => {
+                    // Helper to parse feature slug into base key and display value
+                    const parseFeature = (slug: string) => {
+                      let base = slug;
+                      let value = null;
 
-                      // Helper to extract numeric value from feature name
-                      const extractValue = (name: string): string => {
-                        // Try to extract number with commas (e.g., "10,000")
-                        const numMatch = name.match(/[\d,]+/);
-                        if (numMatch) return numMatch[0];
-                        // Check for "unlimited"
-                        if (/unlimited/i.test(name)) return 'Unlimited';
-                        return name;
+                      // Check for "unlimited"
+                      if (/unlimited/i.test(slug)) {
+                        value = 'Unlimited';
+                        base = slug.replace(/unlimited/i, '');
+                      } else {
+                        // Match numbers (including those with underscores/commas)
+                        // We use a non-capturing group for the boundary check
+                        const numMatch = slug.match(/(?:^|[_\W])(\d+(?:[_,]\d+)*)(?:$|[_\W])/);
+                        if (numMatch) {
+                          value = numMatch[1].replace(/_/g, ',');
+                          // Remove just the number part from the slug
+                          base = slug.replace(numMatch[1], '');
+                        }
+                      }
+
+                      // Clean up base slug (remove duplicate/trailing underscores)
+                      base = base.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
+
+                      return { base, value };
+                    };
+
+                    // 1. Collect all unique features keyed by baseSlug
+                    const featureMap = new Map<string, { label: string }>();
+
+                    [freePlan, plusPlan, proPlan].forEach(plan => {
+                      plan?.features?.forEach(f => {
+                        const { base } = parseFeature(f.slug);
+                        // If we haven't seen this base slug yet, add it
+                        if (!featureMap.has(base)) {
+                          // Clean up label: remove numbers to make it generic
+                          // e.g. "3,000 Monthly Requests" -> "Monthly Requests"
+                          // e.g. "1 User Access Key" -> "User Access Key"
+                          let label = f.name;
+                          // Remove any sequence of digits (with optional commas)
+                          label = label.replace(/\b[\d,]+\b/g, '').trim();
+                          // Remove extra spaces if any
+                          label = label.replace(/\s+/g, ' ');
+
+                          featureMap.set(base, { label });
+                        }
+                      });
+                    });
+
+                    // 2. Build rows
+                    const rows = Array.from(featureMap.entries()).map(([baseSlug, { label }]) => {
+                      const getDisplayValue = (plan: typeof freePlan) => {
+                        // Find feature in this plan that matches the base slug
+                        const feature = plan?.features?.find(f => parseFeature(f.slug).base === baseSlug);
+                        if (!feature) return '—';
+
+                        const { value } = parseFeature(feature.slug);
+                        // If no value was extracted (no number/unlimited), treat as boolean
+                        return value ?? '✓';
                       };
 
-                      // Find consolidated features
-                      const plusRequestsFeature = plusPlan?.features?.find(f => requestsPattern.test(f.name));
-                      const proRequestsFeature = proPlan?.features?.find(f => requestsPattern.test(f.name));
-                      const plusAccessKeysFeature = plusPlan?.features?.find(f => accessKeysPattern.test(f.name));
-                      const proAccessKeysFeature = proPlan?.features?.find(f => accessKeysPattern.test(f.name));
+                      return {
+                        id: baseSlug,
+                        label: label,
+                        freeValue: getDisplayValue(freePlan),
+                        plusValue: getDisplayValue(plusPlan),
+                        proValue: getDisplayValue(proPlan),
+                      };
+                    });
 
-                      // Build consolidated rows
-                      type FeatureRow = { id: string; label: string; freeValue: string; plusValue: string; proValue: string; isConsolidated: boolean };
-                      const rows: FeatureRow[] = [];
-
-                      // Monthly Requests row
-                      if (plusRequestsFeature || proRequestsFeature) {
-                        rows.push({
-                          id: 'monthly-requests',
-                          label: 'Monthly Requests',
-                          freeValue: '3,000',
-                          plusValue: plusRequestsFeature ? extractValue(plusRequestsFeature.name) : '—',
-                          proValue: proRequestsFeature ? extractValue(proRequestsFeature.name) : '—',
-                          isConsolidated: true,
-                        });
-                      }
-
-                      // Access Keys row
-                      if (plusAccessKeysFeature || proAccessKeysFeature) {
-                        rows.push({
-                          id: 'access-keys',
-                          label: 'Access Keys',
-                          freeValue: '—',
-                          plusValue: plusAccessKeysFeature ? extractValue(plusAccessKeysFeature.name) : '—',
-                          proValue: proAccessKeysFeature ? extractValue(proAccessKeysFeature.name) : '—',
-                          isConsolidated: true,
-                        });
-                      }
-
-                      // Add remaining features (not matching consolidated patterns)
-                      const consolidatedIds = new Set([
-                        plusRequestsFeature?.id,
-                        proRequestsFeature?.id,
-                        plusAccessKeysFeature?.id,
-                        proAccessKeysFeature?.id,
-                      ].filter(Boolean));
-
-                      const otherFeatures = new Map<string, { name: string; inPlus: boolean; inPro: boolean }>();
-
-                      plusPlan?.features?.forEach(f => {
-                        if (!consolidatedIds.has(f.id)) {
-                          otherFeatures.set(f.id, { name: f.name, inPlus: true, inPro: false });
-                        }
-                      });
-
-                      proPlan?.features?.forEach(f => {
-                        if (!consolidatedIds.has(f.id)) {
-                          const existing = otherFeatures.get(f.id);
-                          if (existing) {
-                            existing.inPro = true;
-                          } else {
-                            otherFeatures.set(f.id, { name: f.name, inPlus: false, inPro: true });
-                          }
-                        }
-                      });
-
-                      // Add other features as regular rows
-                      otherFeatures.forEach((feature, id) => {
-                        rows.push({
-                          id,
-                          label: feature.name,
-                          freeValue: '—',
-                          plusValue: feature.inPlus ? '✓' : '—',
-                          proValue: feature.inPro ? '✓' : '—',
-                          isConsolidated: false,
-                        });
-                      });
-
-                      return rows.map((row) => (
-                        <tr key={row.id}>
-                          <td className="feature-name">{row.label}</td>
-                          <td className="feature-check">
-                            <span className={`${row.isConsolidated ? 'feature-value' : 'check-icon'} ${row.freeValue === '—' ? 'no' : ''}`}>
-                              {row.freeValue}
-                            </span>
-                          </td>
-                          <td className="feature-check featured-column">
-                            <span className={`${row.isConsolidated ? 'feature-value' : 'check-icon'} ${row.plusValue === '—' ? 'no' : 'yes'}`}>
-                              {row.plusValue}
-                            </span>
-                          </td>
-                          <td className="feature-check">
-                            <span className={`${row.isConsolidated ? 'feature-value' : 'check-icon'} ${row.proValue === '—' ? 'no' : 'yes'}`}>
-                              {row.proValue}
-                            </span>
-                          </td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                  <tfoot>
-                    <tr className="table-actions-row">
-                      <td></td>
-                      <td className="table-action-cell">
-                        {switchingToFree ? (
-                          <button className="btn btn-secondary table-btn" disabled>Switching</button>
-                        ) : isOnFreePlan && hasPendingChange && freePlan?.id ? (
-                          <CheckoutButton planId={freePlan.id} planPeriod="month">
-                            <button className="btn btn-secondary table-btn has-secondary">
-                              <span>Resubscribe</span>
-                              <span className="btn-secondary-text">Ends {formattedPeriodEnd}</span>
-                            </button>
-                          </CheckoutButton>
-                        ) : isOnFreePlan ? (
-                          <button className="btn btn-secondary table-btn" disabled>Current Plan</button>
-                        ) : freePlan?.id ? (
-                          <CheckoutButton planId={freePlan.id} planPeriod="month">
-                            <button className="btn btn-secondary table-btn">Downgrade</button>
-                          </CheckoutButton>
-                        ) : (
-                          <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/subscription'}>Downgrade</button>
-                        )}
-                      </td>
-                      <td className="table-action-cell featured-column">
-                        {switchingToPlus ? (
-                          <button className="btn btn-primary table-btn" disabled>Switching</button>
-                        ) : (
-                          renderPlanButton(
-                            plusPlan?.id || PLUS_PLAN_ID,
-                            isOnPlusPlan,
-                            true,
-                            eligibleForFreeTrial && plusFreeTrialDays ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Subscribe',
-                            true,
-                            isOnPlusPlan && hasPendingChange ? formattedPeriodEnd : null
-                          )
-                        )}
-                      </td>
-                      <td className="table-action-cell">
-                        {switchingToPro ? (
-                          <button className="btn btn-secondary table-btn" disabled>Switching</button>
-                        ) : (
-                          renderPlanButton(
-                            proPlan?.id || PRO_PLAN_ID,
-                            isOnProPlan,
-                            false,
-                            eligibleForFreeTrial && proFreeTrialDays ? `Start ${proFreeTrialDays} Day Trial` : isOnPlusPlan ? 'Upgrade' : 'Subscribe',
-                            true,
-                            isOnProPlan && hasPendingChange ? formattedPeriodEnd : null
-                          )
-                        )}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
+                    return rows.map((row) => (
+                      <tr key={row.id}>
+                        <td className="feature-name">{row.label}</td>
+                        <td className="feature-check">
+                          <span className={`${row.freeValue === '✓' ? 'check-icon' : row.freeValue === '—' ? 'check-icon no' : 'feature-value'}`}>
+                            {row.freeValue}
+                          </span>
+                        </td>
+                        <td className="feature-check featured-column">
+                          <span className={`${row.plusValue === '✓' ? 'check-icon' : row.plusValue === '—' ? 'check-icon no' : 'feature-value'}`}>
+                            {row.plusValue}
+                          </span>
+                        </td>
+                        <td className="feature-check">
+                          <span className={`${row.proValue === '✓' ? 'check-icon' : row.proValue === '—' ? 'check-icon no' : 'feature-value'}`}>
+                            {row.proValue}
+                          </span>
+                        </td>
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+                <tfoot>
+                  <tr className="table-actions-row">
+                    <td></td>
+                    <td className="table-action-cell">
+                      {switchingToFree ? (
+                        <button className="btn btn-secondary table-btn" disabled>Switching</button>
+                      ) : isOnFreePlan && hasPendingChange && freePlan?.id ? (
+                        <CheckoutButton planId={freePlan.id} planPeriod="month">
+                          <button className="btn btn-secondary table-btn has-secondary">
+                            <span>Resubscribe</span>
+                            <span className="btn-secondary-text">Ends {formattedPeriodEnd}</span>
+                          </button>
+                        </CheckoutButton>
+                      ) : isOnFreePlan ? (
+                        <button className="btn btn-secondary table-btn" disabled>Current Plan</button>
+                      ) : freePlan?.id ? (
+                        <CheckoutButton planId={freePlan.id} planPeriod="month">
+                          <button className="btn btn-secondary table-btn">Downgrade</button>
+                        </CheckoutButton>
+                      ) : (
+                        <button className="btn btn-secondary table-btn" onClick={() => window.location.href = '/subscription'}>Downgrade</button>
+                      )}
+                    </td>
+                    <td className="table-action-cell featured-column">
+                      {switchingToPlus ? (
+                        <button className="btn btn-primary table-btn" disabled>Switching</button>
+                      ) : (
+                        renderPlanButton(
+                          plusPlan?.id || PLUS_PLAN_ID,
+                          isOnPlusPlan,
+                          true,
+                          eligibleForFreeTrial && plusFreeTrialDays ? `Start ${plusFreeTrialDays} Day Trial` : isOnProPlan ? 'Downgrade' : 'Subscribe',
+                          true,
+                          isOnPlusPlan && hasPendingChange ? formattedPeriodEnd : null
+                        )
+                      )}
+                    </td>
+                    <td className="table-action-cell">
+                      {switchingToPro ? (
+                        <button className="btn btn-secondary table-btn" disabled>Switching</button>
+                      ) : (
+                        renderPlanButton(
+                          proPlan?.id || PRO_PLAN_ID,
+                          isOnProPlan,
+                          false,
+                          eligibleForFreeTrial && proFreeTrialDays ? `Start ${proFreeTrialDays} Day Trial` : isOnPlusPlan ? 'Upgrade' : 'Subscribe',
+                          true,
+                          isOnProPlan && hasPendingChange ? formattedPeriodEnd : null
+                        )
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-          )
-        }
+          </div>
+        )}
       </div >
     </div >
   );
