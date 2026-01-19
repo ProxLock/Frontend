@@ -11,19 +11,19 @@ const FALLBACK_PLANS = {
   free: {
     name: 'Free',
     price: '0',
-    description: 'Get up to 3,000 proxy requests each month.',
+    description: 'Great for trying out the platform.',
     freeTrialDays: 0,
   },
   plus: {
     name: 'Plus',
     price: '9.99',
-    description: 'Get up to 10,000 proxy requests each month and 1 user access key.',
+    description: 'Good for scaling applications as you serve a medium size audience.',
     freeTrialDays: 30,
   },
   pro: {
     name: 'Pro',
     price: '19.99',
-    description: 'Get up to 25,000 proxy requests each month and unlimited user access keys.',
+    description: 'Get the best bang for your buck and serve a large amount of users each month.',
     freeTrialDays: 7,
   },
 };
