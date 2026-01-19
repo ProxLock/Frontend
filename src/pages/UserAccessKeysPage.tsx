@@ -8,11 +8,6 @@ import type { UserAccessKey } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface UserAccessKey {
-    key: string;
-    name: string;
-}
-
 export default function UserAccessKeysPage() {
     const { getToken } = useAuth();
     const { data: plans } = usePlans({ for: 'user' });
