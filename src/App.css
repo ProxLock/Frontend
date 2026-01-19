@@ -3907,7 +3907,7 @@ body {
     align-items: center;
     justify-content: flex-start;
     text-align: left;
-    padding: 1.5rem 3rem;
+    padding: 0.5rem 3rem 1.75rem;
     gap: 3rem;
   }
 
@@ -4097,7 +4097,7 @@ body {
 /* Plan Button */
 .plan-btn {
   width: 100%;
-  display: block;
+  display: flex;
   text-decoration: none;
   font-weight: 600;
   padding: 12px 0;
