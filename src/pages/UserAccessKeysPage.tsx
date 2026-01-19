@@ -3,6 +3,8 @@ import { usePlans, useSubscription } from "@clerk/clerk-react/experimental";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import ErrorToast from "../components/ErrorToast";
+import { copyToClipboard } from "../utils/clipboard";
+import type { UserAccessKey } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -182,16 +184,14 @@ export default function UserAccessKeysPage() {
     };
 
     const handleCopyToClipboard = async (text: string, buttonId: string) => {
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopiedButtonId(buttonId);
-            setTimeout(() => {
-                setCopiedButtonId(null);
-            }, 2000);
-        } catch (err) {
-            console.error("Failed to copy:", err);
-            setErrorToast("Failed to copy to clipboard. Please copy manually.");
-        }
+        await copyToClipboard(
+            text,
+            () => {
+                setCopiedButtonId(buttonId);
+                setTimeout(() => setCopiedButtonId(null), 2000);
+            },
+            setErrorToast
+        );
     };
 
     const handleCloseNewKeyModal = () => {

@@ -3,15 +3,9 @@ import { UserButton } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
 import logo from "../assets/logo.svg";
+import type { Project } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface Project {
-  id?: string;
-  name?: string;
-  description: string;
-  keys?: unknown[];
-}
 
 export interface SidebarRef {
   refreshProjects: () => void;

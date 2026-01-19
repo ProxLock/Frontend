@@ -63,8 +63,7 @@ export default function AuthRouter() {
         setJustRegistered(data.justRegistered === true);
       }
       setAccountCreated(true);
-    } catch (err) {
-      // Even if there's an error, set accountCreated to true to avoid blocking the app
+    } catch {
       setAccountCreated(true);
     }
   };
