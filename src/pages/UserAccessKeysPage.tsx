@@ -1,4 +1,5 @@
 import { useAuth } from "@clerk/clerk-react";
+import { usePlans, useSubscription } from "@clerk/clerk-react/experimental";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import ErrorToast from "../components/ErrorToast";
@@ -7,18 +8,13 @@ import type { UserAccessKey } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const getTierName = (subscription: string | null): string => {
-    if (!subscription || subscription === 'free') return "Free";
-    if (subscription === '10k_requests') return "Plus";
-    return "Pro";
-};
-
 export default function UserAccessKeysPage() {
     const { getToken } = useAuth();
+    const { data: plans } = usePlans({ for: 'user' });
+    const { data: subscription } = useSubscription({ for: 'user' });
     const [accessKeys, setAccessKeys] = useState<UserAccessKey[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
     const [accessKeyLimit, setAccessKeyLimit] = useState<number>(0);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isClosingCreateModal, setIsClosingCreateModal] = useState(false);
@@ -30,8 +26,16 @@ export default function UserAccessKeysPage() {
     const [errorToast, setErrorToast] = useState<string | null>(null);
     const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
 
+    // Get the active plan from Clerk subscription
+    const activeItem = subscription?.subscriptionItems?.find(item => item.status === 'active');
+    const currentPlanId = activeItem?.plan?.id ?? null;
+
+    // Get the plan name from Clerk plans data, fallback to 'Free' if not found
+    const freePlan = plans?.find(plan => plan.slug === 'free' || plan.id === 'free' || plan.name?.toLowerCase() === 'free');
+    const isOnFreePlan = !subscription || !currentPlanId || currentPlanId === freePlan?.id;
+    const tierName = isOnFreePlan ? 'Free' : (activeItem?.plan?.name ?? 'Free');
+
     const canCreateKey = accessKeyLimit === -1 || accessKeys.length < accessKeyLimit;
-    const tierName = getTierName(currentSubscription);
 
     const fetchUserData = useCallback(async () => {
         try {
@@ -53,7 +57,6 @@ export default function UserAccessKeysPage() {
             }
 
             const userData = await res.json();
-            setCurrentSubscription(userData.currentSubscription ?? null);
             setAccessKeyLimit(userData.accessKeyLimit ?? 0);
 
             // Access keys come from the /me endpoint as an array of objects with key and name
