@@ -442,15 +442,13 @@ export default function DashboardPage() {
     }
   };
 
+  /* handleCreateKey modified to respect disabled state if triggered somehow, though button should prevent it */
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
 
-    // Check API Key Limit
+    // Check API Key Limit - strictly enforce in case of bypass
     if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
-      if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
-        navigate("/pricing");
-      }
       return;
     }
 
@@ -1168,15 +1166,17 @@ export default function DashboardPage() {
                   Set Rate Limit for All
                 </button>
               )}
-              <button className="btn-primary" onClick={() => {
-                if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
-                  if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
-                    navigate("/pricing");
+              <button
+                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                onClick={() => {
+                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                    return;
+                  } else {
+                    setShowAddKeyModal(true);
                   }
-                } else {
-                  setShowAddKeyModal(true);
-                }
-              }}>
+                }}
+                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+              >
                 + Add Key
               </button>
             </div>
@@ -1187,15 +1187,17 @@ export default function DashboardPage() {
               <div className="empty-icon">🔑</div>
               <h3>No API keys yet</h3>
               <p>Add your first API key to get started with secure proxy requests.</p>
-              <button className="btn-primary" onClick={() => {
-                if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
-                  if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
-                    navigate("/pricing");
+              <button
+                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                onClick={() => {
+                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                    return;
+                  } else {
+                    setShowAddKeyModal(true);
                   }
-                } else {
-                  setShowAddKeyModal(true);
-                }
-              }}>
+                }}
+                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+              >
                 Create Your First Key
               </button>
             </div>
