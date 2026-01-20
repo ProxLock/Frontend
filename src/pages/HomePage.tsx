@@ -1,8 +1,9 @@
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useSignupContext } from "../contexts/SignupContext";
+import { useUserContext } from "../contexts/UserContext";
 import ErrorToast from "../components/ErrorToast";
 import type { Project } from "../types";
 
@@ -10,7 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 export default function HomePage() {
   const { getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useUserContext();
   const navigate = useNavigate();
   const { refreshProjects } = useProjectsContext();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -60,6 +61,14 @@ export default function HomePage() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check project limit
+    if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+      if (confirm(`You have reached your limit of ${user.projectLimit} projects. Upgrade your plan to create more.`)) {
+        navigate("/pricing");
+      }
+      return;
+    }
 
     try {
       setCreating(true);
@@ -189,7 +198,15 @@ export default function HomePage() {
             <div className="empty-icon">📁</div>
             <h2>No projects yet</h2>
             <p>Get started by creating your first project to manage API keys securely.</p>
-            <button className="btn-primary" onClick={() => setShowCreateProjectModal(true)}>
+            <button className="btn-primary" onClick={() => {
+              if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                if (confirm(`You have reached your limit of ${user.projectLimit} projects. Upgrade your plan to create more.`)) {
+                  navigate("/pricing");
+                }
+              } else {
+                setShowCreateProjectModal(true);
+              }
+            }}>
               Create Your First Project
             </button>
           </div>
@@ -200,7 +217,15 @@ export default function HomePage() {
                 <h2 className="section-title">Your Projects</h2>
                 <span className="project-count-badge">{projects.length}</span>
               </div>
-              <button className="btn-primary" onClick={() => setShowCreateProjectModal(true)}>
+              <button className="btn-primary" onClick={() => {
+                if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                  if (confirm(`You have reached your limit of ${user.projectLimit} projects. Upgrade your plan to create more.`)) {
+                    navigate("/pricing");
+                  }
+                } else {
+                  setShowCreateProjectModal(true);
+                }
+              }}>
                 + Create Project
               </button>
             </div>

@@ -9,6 +9,7 @@ import UserAccessKeysPage from "./pages/UserAccessKeysPage";
 import Sidebar, { type SidebarRef } from "./components/Sidebar";
 import UpgradeBanner from "./components/UpgradeBanner";
 import { ProjectsProvider } from "./contexts/ProjectsContext";
+import { UserProvider } from "./contexts/UserContext";
 import { SignupProvider, useSignupContext } from "./contexts/SignupContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -23,21 +24,23 @@ function AppWithSidebar() {
   };
 
   return (
-    <ProjectsProvider refreshProjects={refreshProjects}>
-      <div className="app-layout">
-        <Sidebar ref={sidebarRef} />
-        <div className="main-content">
-          <UpgradeBanner />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/api-keys" element={<UserAccessKeysPage />} />
-            <Route path="/projects/:projectId" element={<DashboardPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+    <UserProvider>
+      <ProjectsProvider refreshProjects={refreshProjects}>
+        <div className="app-layout">
+          <Sidebar ref={sidebarRef} />
+          <div className="main-content">
+            <UpgradeBanner />
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/api-keys" element={<UserAccessKeysPage />} />
+              <Route path="/projects/:projectId" element={<DashboardPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </div>
         </div>
-      </div>
-    </ProjectsProvider>
+      </ProjectsProvider>
+    </UserProvider>
   );
 }
 

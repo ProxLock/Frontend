@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
+import { useUserContext } from "../contexts/UserContext";
 import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
 import type { Project } from "../types";
@@ -101,6 +102,7 @@ interface PlayIntegrityConfig {
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
+  const { user } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { refreshProjects } = useProjectsContext();
@@ -443,6 +445,14 @@ export default function DashboardPage() {
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
+
+    // Check API Key Limit
+    if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+      if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
+        navigate("/pricing");
+      }
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -1158,7 +1168,15 @@ export default function DashboardPage() {
                   Set Rate Limit for All
                 </button>
               )}
-              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+              <button className="btn-primary" onClick={() => {
+                if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
+                    navigate("/pricing");
+                  }
+                } else {
+                  setShowAddKeyModal(true);
+                }
+              }}>
                 + Add Key
               </button>
             </div>
@@ -1169,7 +1187,15 @@ export default function DashboardPage() {
               <div className="empty-icon">🔑</div>
               <h3>No API keys yet</h3>
               <p>Add your first API key to get started with secure proxy requests.</p>
-              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+              <button className="btn-primary" onClick={() => {
+                if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (confirm(`You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade your plan to create more.`)) {
+                    navigate("/pricing");
+                  }
+                } else {
+                  setShowAddKeyModal(true);
+                }
+              }}>
                 Create Your First Key
               </button>
             </div>
