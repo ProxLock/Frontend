@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
 import logo from "../assets/logo.svg";
 import type { Project } from "../types";
+import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -13,16 +14,19 @@ export interface SidebarRef {
 
 const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
   const { getToken } = useAuth();
+  const { user } = useUserContext();
   const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentRequestUsage, setCurrentRequestUsage] = useState<number | null>(null);
-  const [requestLimit, setRequestLimit] = useState<number | null>(null);
-  const [isPayingCustomer, setIsPayingCustomer] = useState<boolean | null>(null);
   const [hasScrollableContent, setHasScrollableContent] = useState(false);
   const sidebarNavRef = useRef<HTMLElement | null>(null);
+
+  const requestLimit = user?.requestLimit ?? null;
+  const currentRequestUsage = user?.currentRequestUsage ?? null;
+  const isPayingCustomer = user?.isPayingCustomer ?? false;
+
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -59,43 +63,6 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const fetchUserData = useCallback(async () => {
-    try {
-      const token = await getToken({ template: "default" });
-
-      const res = await fetch(`${API_URL}/me`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json; charset=utf-8",
-        },
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        const userData = await res.json();
-        setCurrentRequestUsage(userData.currentRequestUsage ?? null);
-        setRequestLimit(userData.requestLimit ?? null);
-        // Check if user is a paying customer
-        // First check if there's an explicit subscription status field
-        if (userData.subscriptionStatus !== undefined) {
-          setIsPayingCustomer(userData.subscriptionStatus === 'active' || userData.subscriptionStatus === 'paid');
-        } else if (userData.isPayingCustomer !== undefined) {
-          setIsPayingCustomer(userData.isPayingCustomer);
-        } else {
-          // Infer from requestLimit - typically free users have lower limits (e.g., <= 1000)
-          // Adjust this threshold based on your actual free tier limit
-          setIsPayingCustomer(userData.requestLimit ? userData.requestLimit > 1000 : false);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching user data:", err);
-    }
-  }, [getToken]);
-
-  useEffect(() => {
-    fetchUserData();
-  }, [fetchUserData]);
 
   // Check if sidebar nav has scrollable content
   useEffect(() => {

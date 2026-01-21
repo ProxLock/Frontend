@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
+import { useUserContext } from "../contexts/UserContext";
 import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
 import type { Project } from "../types";
@@ -101,6 +102,7 @@ interface PlayIntegrityConfig {
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
+  const { user } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const { refreshProjects } = useProjectsContext();
@@ -440,9 +442,15 @@ export default function DashboardPage() {
     }
   };
 
+  /* handleCreateKey modified to respect disabled state if triggered somehow, though button should prevent it */
   const handleCreateKey = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
+
+    // Check API Key Limit - strictly enforce in case of bypass
+    if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -1158,7 +1166,17 @@ export default function DashboardPage() {
                   Set Rate Limit for All
                 </button>
               )}
-              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+              <button
+                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                onClick={() => {
+                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                    return;
+                  } else {
+                    setShowAddKeyModal(true);
+                  }
+                }}
+                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+              >
                 + Add Key
               </button>
             </div>
@@ -1169,7 +1187,17 @@ export default function DashboardPage() {
               <div className="empty-icon">🔑</div>
               <h3>No API keys yet</h3>
               <p>Add your first API key to get started with secure proxy requests.</p>
-              <button className="btn-primary" onClick={() => setShowAddKeyModal(true)}>
+              <button
+                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                onClick={() => {
+                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                    return;
+                  } else {
+                    setShowAddKeyModal(true);
+                  }
+                }}
+                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+              >
                 Create Your First Key
               </button>
             </div>

@@ -299,19 +299,17 @@ export default function PricingPage() {
                     [freePlan, plusPlan, proPlan].forEach(plan => {
                       plan?.features?.forEach(f => {
                         const { base } = parseFeature(f.slug);
-                        // If we haven't seen this base slug yet, add it
-                        if (!featureMap.has(base)) {
-                          // Clean up label: remove numbers to make it generic
-                          // e.g. "3,000 Monthly Requests" -> "Monthly Requests"
-                          // e.g. "1 User Access Key" -> "User Access Key"
-                          let label = f.name;
-                          // Remove any sequence of digits (with optional commas)
-                          label = label.replace(/\b[\d,]+\b/g, '').trim();
-                          // Remove extra spaces if any
-                          label = label.replace(/\s+/g, ' ');
 
-                          featureMap.set(base, { label });
-                        }
+                        // Clean up label: remove numbers to make it generic
+                        // e.g. "3,000 Monthly Requests" -> "Monthly Requests"
+                        // e.g. "1 User Access Key" -> "User Access Key"
+                        let label = f.name;
+                        // Remove any sequence of digits (with optional commas)
+                        label = label.replace(/\b[\d,]+\b/g, '').trim();
+                        // Remove extra spaces if any
+                        label = label.replace(/\s+/g, ' ');
+
+                        featureMap.set(base, { label });
                       });
                     });
 
