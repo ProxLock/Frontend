@@ -142,7 +142,7 @@ export default function PricingPage() {
         <div className="beta-notice-wrapper">
           <div className="beta-notice">
             <span className="beta-notice-top">
-              <span className="beta-badge">Beta Pricing Available</span>
+              <span className="beta-badge">Beta Pricing</span>
             </span>
             <span className="beta-notice-bottom">Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
           </div>
