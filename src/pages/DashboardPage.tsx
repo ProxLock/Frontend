@@ -1516,6 +1516,36 @@ export default function DashboardPage() {
                     </button>
                   </div>
                 </div>
+                <div className="playintegrity-detail-row">
+                  <span className="playintegrity-detail-label" style={{ alignSelf: 'flex-start', marginTop: '0.25rem' }}>Allowed Verdicts:</span>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {(playIntegrityConfig.allowedAppRecognitionVerdicts && playIntegrityConfig.allowedAppRecognitionVerdicts.length > 0) ? (
+                      playIntegrityConfig.allowedAppRecognitionVerdicts.map(verdict => {
+                        const config = {
+                          "PLAY_RECOGNIZED": { label: "Play Recognized", color: "#10b981", bg: "rgba(16, 185, 129, 0.1)" },
+                          "UNRECOGNIZED_VERSION": { label: "Unrecognized Version", color: "#f59e0b", bg: "rgba(245, 158, 11, 0.1)" },
+                          "UNEVALUATED": { label: "Unevaluated", color: "#ef4444", bg: "rgba(239, 68, 68, 0.1)" }
+                        }[verdict] || { label: verdict, color: 'var(--text-primary)', bg: 'var(--bg-secondary)' };
+
+                        return (
+                          <span key={verdict} style={{
+                            fontSize: '0.75rem',
+                            padding: '0.125rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            backgroundColor: config.bg,
+                            color: config.color,
+                            fontWeight: 500,
+                            border: `1px solid ${config.bg}`
+                          }}>
+                            {config.label}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>None selected (Default: Play Recognized)</span>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
