@@ -2351,7 +2351,7 @@ export default function DashboardPage() {
                   className={`modal-mode-btn ${playIntegrityModalMode === "upload" ? "active" : ""}`}
                   onClick={() => handlePlayIntegrityModalModeChange("upload")}
                 >
-                  Upload New Key
+                  Upload New Config
                 </button>
                 <button
                   type="button"
