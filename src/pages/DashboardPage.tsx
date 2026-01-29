@@ -1043,6 +1043,9 @@ export default function DashboardPage() {
       } finally {
         setLoadingAvailablePlayIntegrityConfigs(false);
       }
+    } else if (mode === "upload") {
+      setPlayIntegrityPackageName("");
+      setPlayIntegrityAllowedVerdicts(["PLAY_RECOGNIZED"]);
     }
   };
 
