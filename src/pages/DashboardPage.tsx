@@ -1458,11 +1458,11 @@ export default function DashboardPage() {
         <div className="playintegrity-section">
           <div className="playintegrity-header">
             <h2 className="section-title">Google Play Integrity</h2>
-            <div className="playintegrity-actions" style={{ display: 'flex', gap: '0.75rem' }}>
-              {playIntegrityConfig && (
-                <button
-                  className="btn-secondary"
-                  onClick={() => {
+            <div className="playintegrity-actions">
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  if (playIntegrityConfig) {
                     setPlayIntegrityPackageName(playIntegrityConfig.packageName || "");
 
                     if (playIntegrityConfig.allowedAppRecognitionVerdicts) {
@@ -1470,16 +1470,13 @@ export default function DashboardPage() {
                     }
                     setPlayIntegrityModalMode("update");
                     setShowPlayIntegrityModal(true);
-                  }}
-                >
-                  Update Config
-                </button>
-              )}
-              <button className="btn-primary" onClick={() => {
-                setPlayIntegrityModalMode("upload");
-                setShowPlayIntegrityModal(true);
-              }}>
-                {playIntegrityConfig ? "New Config" : "+ Upload Play Integrity Config"}
+                  } else {
+                    setPlayIntegrityModalMode("upload");
+                    setShowPlayIntegrityModal(true);
+                  }
+                }}
+              >
+                {playIntegrityConfig ? "Update Config" : "+ Upload Play Integrity Config"}
               </button>
             </div>
           </div>
