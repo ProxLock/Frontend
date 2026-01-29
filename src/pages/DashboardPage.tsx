@@ -2381,9 +2381,9 @@ export default function DashboardPage() {
                     </label>
                     <div className="checkbox-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {[
-                        { value: "PLAY_RECOGNIZED", label: "Play Recognized", description: "The app and certificate match the versions distributed by Google Play." },
-                        { value: "UNRECOGNIZED_VERSION", label: "Unrecognized Version", description: "The certificate or package name does not match Google Play records." },
-                        { value: "UNEVALUATED", label: "Unevaluated", description: "Application integrity was not evaluated." }
+                        { value: "PLAY_RECOGNIZED", label: "Play Recognized", description: "The app and certificate match the versions distributed by Google Play.", tag: "Recommended", tagColor: "#10b981", tagBg: "rgba(16, 185, 129, 0.1)" },
+                        { value: "UNRECOGNIZED_VERSION", label: "Unrecognized Version", description: "The certificate or package name does not match Google Play records.", tag: "Development", tagColor: "#f59e0b", tagBg: "rgba(245, 158, 11, 0.1)" },
+                        { value: "UNEVALUATED", label: "Unevaluated", description: "Application integrity was not evaluated.", tag: "Not Recommended", tagColor: "#ef4444", tagBg: "rgba(239, 68, 68, 0.1)" }
                       ].map((verdict) => (
                         <label key={verdict.value} className="checkbox-container" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}>
                           <input
@@ -2399,7 +2399,23 @@ export default function DashboardPage() {
                             style={{ marginTop: '0.25rem' }}
                           />
                           <div className="checkbox-content">
-                            <span className="checkbox-label" style={{ display: 'block', fontWeight: 500, color: 'var(--text-secondary)' }}>{verdict.label}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.125rem' }}>
+                              <span className="checkbox-label" style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{verdict.label}</span>
+                              {verdict.tag && (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  padding: '0.125rem 0.375rem',
+                                  borderRadius: '0.25rem',
+                                  backgroundColor: verdict.tagBg,
+                                  color: verdict.tagColor,
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.025em'
+                                }}>
+                                  {verdict.tag}
+                                </span>
+                              )}
+                            </div>
                             <span className="checkbox-description" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{verdict.description}</span>
                           </div>
                         </label>
@@ -2502,9 +2518,9 @@ export default function DashboardPage() {
                     </label>
                     <div className="checkbox-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {[
-                        { value: "PLAY_RECOGNIZED", label: "Play Recognized", description: "The app and certificate match the versions distributed by Google Play." },
-                        { value: "UNRECOGNIZED_VERSION", label: "Unrecognized Version", description: "The certificate or package name does not match Google Play records." },
-                        { value: "UNEVALUATED", label: "Unevaluated", description: "Application integrity was not evaluated." }
+                        { value: "PLAY_RECOGNIZED", label: "Play Recognized", description: "The app and certificate match the versions distributed by Google Play.", tag: "Recommended", tagColor: "#10b981", tagBg: "rgba(16, 185, 129, 0.1)" },
+                        { value: "UNRECOGNIZED_VERSION", label: "Unrecognized Version", description: "The certificate or package name does not match Google Play records.", tag: "Development", tagColor: "#f59e0b", tagBg: "rgba(245, 158, 11, 0.1)" },
+                        { value: "UNEVALUATED", label: "Unevaluated", description: "Application integrity was not evaluated.", tag: "Not Recommended", tagColor: "#ef4444", tagBg: "rgba(239, 68, 68, 0.1)" }
                       ].map((verdict) => (
                         <label key={verdict.value} className="checkbox-container" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}>
                           <input
@@ -2520,7 +2536,23 @@ export default function DashboardPage() {
                             style={{ marginTop: '0.25rem' }}
                           />
                           <div className="checkbox-content">
-                            <span className="checkbox-label" style={{ display: 'block', fontWeight: 500, color: 'var(--text-secondary)' }}>{verdict.label}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.125rem' }}>
+                              <span className="checkbox-label" style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{verdict.label}</span>
+                              {verdict.tag && (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  padding: '0.125rem 0.375rem',
+                                  borderRadius: '0.25rem',
+                                  backgroundColor: verdict.tagBg,
+                                  color: verdict.tagColor,
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.025em'
+                                }}>
+                                  {verdict.tag}
+                                </span>
+                              )}
+                            </div>
                             <span className="checkbox-description" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{verdict.description}</span>
                           </div>
                         </label>
