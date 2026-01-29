@@ -98,6 +98,7 @@ interface PlayIntegrityConfig {
   projectID: string;
   bypassToken: string;
   clientEmail: string;
+  allowedAppRecognitionVerdicts?: string[];
 }
 
 export default function DashboardPage() {
@@ -175,6 +176,7 @@ export default function DashboardPage() {
   const [isClosingPlayIntegrityModal, setIsClosingPlayIntegrityModal] = useState(false);
   const [playIntegrityServiceAccountJson, setPlayIntegrityServiceAccountJson] = useState("");
   const [playIntegrityPackageName, setPlayIntegrityPackageName] = useState("");
+  const [playIntegrityAllowedVerdicts, setPlayIntegrityAllowedVerdicts] = useState<string[]>(["PLAY_RECOGNIZED"]);
   const [uploadingPlayIntegrity, setUploadingPlayIntegrity] = useState(false);
   const [isDraggingOverPlayIntegrity, setIsDraggingOverPlayIntegrity] = useState(false);
   const [playIntegrityModalMode, setPlayIntegrityModalMode] = useState<"upload" | "link">("upload");
@@ -909,6 +911,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           gcloud_json: jsonBody,
           package_name: playIntegrityPackageName,
+          allowedAppRecognitionVerdicts: playIntegrityAllowedVerdicts,
         }),
       });
 
@@ -948,6 +951,7 @@ export default function DashboardPage() {
       setIsClosingPlayIntegrityModal(false);
       setPlayIntegrityServiceAccountJson("");
       setPlayIntegrityPackageName("");
+      setPlayIntegrityAllowedVerdicts(["PLAY_RECOGNIZED"]);
       setIsDraggingOverPlayIntegrity(false);
       setPlayIntegrityModalMode("upload");
       setSelectedPlayIntegrityToLink("");
@@ -1402,7 +1406,7 @@ export default function DashboardPage() {
           <div className="playintegrity-header">
             <h2 className="section-title">Google Play Integrity</h2>
             <button className="btn-primary" onClick={() => setShowPlayIntegrityModal(true)}>
-              {playIntegrityConfig ? "Update Key" : "+ Upload Play Integrity Key"}
+              {playIntegrityConfig ? "New Config" : "+ Upload Play Integrity Config"}
             </button>
           </div>
 
@@ -2250,7 +2254,7 @@ export default function DashboardPage() {
           <div className={`modal-content ${isClosingPlayIntegrityModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">
-                {playIntegrityConfig ? "Update Play Integrity Key" : "Upload Play Integrity Key"}
+                Upload Play Integrity Config
               </h2>
               <button
                 className="modal-close-btn"
@@ -2274,7 +2278,7 @@ export default function DashboardPage() {
                 className={`modal-mode-btn ${playIntegrityModalMode === "link" ? "active" : ""}`}
                 onClick={() => handlePlayIntegrityModalModeChange("link")}
               >
-                Link Existing Key
+                Link Existing Config
               </button>
             </div>
 
@@ -2293,6 +2297,37 @@ export default function DashboardPage() {
                     placeholder="e.g., com.example.app"
                     required
                   />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    Allowed App Recognition Verdicts
+                  </label>
+                  <div className="checkbox-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {[
+                      { value: "PLAY_RECOGNIZED", label: "Play Recognized", description: "The app and certificate match the versions distributed by Google Play." },
+                      { value: "UNRECOGNIZED_VERSION", label: "Unrecognized Version", description: "The certificate or package name does not match Google Play records." },
+                      { value: "UNEVALUATED", label: "Unevaluated", description: "Application integrity was not evaluated." }
+                    ].map((verdict) => (
+                      <label key={verdict.value} className="checkbox-container" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={playIntegrityAllowedVerdicts.includes(verdict.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setPlayIntegrityAllowedVerdicts([...playIntegrityAllowedVerdicts, verdict.value]);
+                            } else {
+                              setPlayIntegrityAllowedVerdicts(playIntegrityAllowedVerdicts.filter(v => v !== verdict.value));
+                            }
+                          }}
+                          style={{ marginTop: '0.25rem' }}
+                        />
+                        <div className="checkbox-content">
+                          <span className="checkbox-label" style={{ display: 'block', fontWeight: 500, color: 'var(--text-secondary)' }}>{verdict.label}</span>
+                          <span className="checkbox-description" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{verdict.description}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label htmlFor="playintegrity-json" className="form-label">
@@ -2364,7 +2399,7 @@ export default function DashboardPage() {
                   </button>
 
                   <button type="submit" className="btn-primary" disabled={uploadingPlayIntegrity || !playIntegrityServiceAccountJson.trim() || !playIntegrityPackageName.trim()}>
-                    {uploadingPlayIntegrity ? "Uploading..." : "Upload Key"}
+                    {uploadingPlayIntegrity ? "Uploading..." : "Upload Config"}
                   </button>
                 </div>
               </form>
