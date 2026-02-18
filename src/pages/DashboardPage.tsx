@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useUserContext } from "../contexts/UserContext";
@@ -108,6 +108,7 @@ export default function DashboardPage() {
   const { user } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const [project, setProject] = useState<Project | null>(null);
@@ -420,17 +421,20 @@ export default function DashboardPage() {
   }, [projectId, getToken]);
 
   // Handle query parameters for auto-opening modal with prefilled data
+  // Also handle /projects/:projectId/create-key route
   useEffect(() => {
     if (loading || !project) return;
 
+    const isCreateKeyRoute = location.pathname.endsWith('/create-key');
     const openModal = searchParams.get("openModal");
-    if (openModal === "true") {
+    
+    if (openModal === "true" || isCreateKeyRoute) {
       const keyParams = parseKeyParams(searchParams);
 
       // Prefill form data
       setFormData({
         name: keyParams.name,
-        description: "",
+        description: keyParams.description,
         apiKey: keyParams.key,
         whitelistedUrls: keyParams.whitelistedUrls,
         rateLimit: keyParams.rateLimit,
@@ -440,10 +444,14 @@ export default function DashboardPage() {
       // Open the modal
       setShowAddKeyModal(true);
 
-      // Clear the query parameters
-      setSearchParams({});
+      // Clear the query parameters and redirect to base project URL if on create-key route
+      if (isCreateKeyRoute) {
+        navigate(`/projects/${projectId}`, { replace: true });
+      } else {
+        setSearchParams({});
+      }
     }
-  }, [loading, project, searchParams, setSearchParams]);
+  }, [loading, project, searchParams, setSearchParams, location.pathname, navigate, projectId]);
 
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {

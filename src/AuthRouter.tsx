@@ -36,6 +36,7 @@ function AppWithSidebar() {
               <Route path="/create-key" element={<CreateKeyPage />} />
               <Route path="/api-keys" element={<UserAccessKeysPage />} />
               <Route path="/projects/:projectId" element={<DashboardPage />} />
+              <Route path="/projects/:projectId/create-key" element={<DashboardPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

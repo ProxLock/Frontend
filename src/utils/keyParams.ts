@@ -5,6 +5,7 @@
 export interface KeyParams {
   name: string;
   key: string;
+  description: string;
   allowsWeb: boolean;
   whitelistedUrls: string[];
   rateLimit: number;
@@ -16,6 +17,7 @@ export interface KeyParams {
 export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
   const keyName = searchParams.get("name") || "";
   const keyValue = searchParams.get("key") || "";
+  const description = searchParams.get("description") || "";
   const allowsWeb = searchParams.get("allowsWeb") === "true";
   const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
   const whitelistedUrls = whitelistedUrlsParam
@@ -27,6 +29,7 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
   return {
     name: keyName,
     key: keyValue,
+    description,
     allowsWeb,
     whitelistedUrls,
     rateLimit: isNaN(rateLimit) ? -1 : rateLimit,
@@ -41,6 +44,7 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: 
   
   if (params.name) searchParams.set("name", params.name);
   if (params.key) searchParams.set("key", params.key);
+  if (params.description) searchParams.set("description", params.description);
   if (params.allowsWeb) searchParams.set("allowsWeb", "true");
   if (params.whitelistedUrls && params.whitelistedUrls.length > 0) {
     searchParams.set("whitelistedUrls", params.whitelistedUrls.join(","));
