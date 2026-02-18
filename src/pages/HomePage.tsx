@@ -75,7 +75,7 @@ export default function HomePage() {
     e.preventDefault();
 
     // Check project limit
-    if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+    if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
       if (confirm(`You have reached your limit of ${user.projectLimit} projects. Upgrade your plan to create more.`)) {
         navigate("/pricing");
       }
@@ -211,16 +211,16 @@ export default function HomePage() {
             <h2>No projects yet</h2>
             <p>Get started by creating your first project to manage API keys securely.</p>
             <button
-              className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+              className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
               onClick={() => {
-                if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
                   // Do nothing on click, tooltip explains it
                   return;
                 } else {
                   setShowCreateProjectModal(true);
                 }
               }}
-              data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+              data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
             >
               Create Your First Project
             </button>
@@ -233,16 +233,16 @@ export default function HomePage() {
                 <span className="project-count-badge">{projects.length}</span>
               </div>
               <button
-                className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
-                  if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                  if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
                     // Do nothing on click
                     return;
                   } else {
                     setShowCreateProjectModal(true);
                   }
                 }}
-                data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
               >
                 + Create Project
               </button>

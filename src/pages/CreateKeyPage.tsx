@@ -69,7 +69,7 @@ export default function CreateKeyPage() {
     e.preventDefault();
 
     // Check project limit
-    if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+    if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
       if (confirm(`You have reached your limit of ${user.projectLimit} projects. Upgrade your plan to create more.`)) {
         navigate("/pricing");
       }
@@ -198,15 +198,15 @@ export default function CreateKeyPage() {
             <div className="projects-header">
               <h2 className="section-title">Select a Project</h2>
               <button
-                className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
-                  if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                  if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
                     return;
                   } else {
                     setShowCreateProjectModal(true);
                   }
                 }}
-                data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
               >
                 + Create New Project
               </button>
@@ -218,15 +218,15 @@ export default function CreateKeyPage() {
                 <h2>No projects yet</h2>
                 <p>Create a project to add your API key to.</p>
                 <button
-                  className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                  className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
                   onClick={() => {
-                    if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                    if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
                       return;
                     } else {
                       setShowCreateProjectModal(true);
                     }
                   }}
-                  data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+                  data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
                 >
                   Create Your First Project
                 </button>
