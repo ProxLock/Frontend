@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useUserContext } from "../contexts/UserContext";
@@ -7,6 +7,7 @@ import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
 import type { Project } from "../types";
 import { copyToClipboard } from "../utils/clipboard";
+import { parseKeyParams } from "../utils/keyParams";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -107,6 +108,8 @@ export default function DashboardPage() {
   const { user } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const [project, setProject] = useState<Project | null>(null);
   const [keys, setKeys] = useState<APIKey[]>([]);
@@ -116,6 +119,8 @@ export default function DashboardPage() {
   const [isNotFound, setIsNotFound] = useState(false);
   const [showAddKeyModal, setShowAddKeyModal] = useState(false);
   const [isClosingModal, setIsClosingModal] = useState(false);
+  const [showKeyLimitModal, setShowKeyLimitModal] = useState(false);
+  const [isClosingKeyLimitModal, setIsClosingKeyLimitModal] = useState(false);
   const [showPartialKey, setShowPartialKey] = useState(false);
   const [isClosingPartialKey, setIsClosingPartialKey] = useState(false);
   const [partialKeyToShow, setPartialKeyToShow] = useState<string>("");
@@ -417,6 +422,40 @@ export default function DashboardPage() {
     fetchData();
   }, [projectId, getToken]);
 
+  // Handle /projects/:projectId/create-key route
+  useEffect(() => {
+    if (loading || !project) return;
+
+    const isCreateKeyRoute = projectId && location.pathname === `/projects/${projectId}/create-key`;
+    
+    if (isCreateKeyRoute) {
+      // Check if API key limit is reached (only enforce if limit > 0, -1 means unlimited)
+      if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
+        setShowKeyLimitModal(true);
+        navigate(`/projects/${projectId}`, { replace: true });
+        return;
+      }
+
+      const keyParams = parseKeyParams(searchParams);
+
+      // Prefill form data
+      setFormData({
+        name: keyParams.name,
+        description: keyParams.description,
+        apiKey: keyParams.key,
+        whitelistedUrls: keyParams.whitelistedUrls,
+        rateLimit: keyParams.rateLimit,
+        allowsWeb: keyParams.allowsWeb,
+      });
+
+      // Open the modal
+      setShowAddKeyModal(true);
+
+      // Redirect to base project URL
+      navigate(`/projects/${projectId}`, { replace: true });
+    }
+  }, [loading, project, searchParams, location.pathname, navigate, projectId]);
+
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {
       return;
@@ -452,7 +491,7 @@ export default function DashboardPage() {
     if (!projectId) return;
 
     // Check API Key Limit - strictly enforce in case of bypass
-    if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+    if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
       return;
     }
 
@@ -528,6 +567,18 @@ export default function DashboardPage() {
       },
       setErrorToast
     );
+  };
+
+  const handleCloseKeyLimitModal = () => {
+    setIsClosingKeyLimitModal(true);
+    setTimeout(() => {
+      setShowKeyLimitModal(false);
+      setIsClosingKeyLimitModal(false);
+    }, 300);
+  };
+
+  const handleUpgrade = () => {
+    navigate("/pricing");
   };
 
   const handleCloseModal = () => {
@@ -1227,15 +1278,15 @@ export default function DashboardPage() {
                 </button>
               )}
               <button
-                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                className={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
-                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
                     return;
                   } else {
                     setShowAddKeyModal(true);
                   }
                 }}
-                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
               >
                 + Add Key
               </button>
@@ -1248,15 +1299,15 @@ export default function DashboardPage() {
               <h3>No API keys yet</h3>
               <p>Add your first API key to get started with secure proxy requests.</p>
               <button
-                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                className={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
                 onClick={() => {
-                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
                     return;
                   } else {
                     setShowAddKeyModal(true);
                   }
                 }}
-                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
               >
                 Create Your First Key
               </button>
@@ -2690,6 +2741,54 @@ export default function DashboardPage() {
           </div >
         )
       }
+
+      {/* Key Limit Modal */}
+      {showKeyLimitModal && (
+        <div className={`modal-overlay ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={handleCloseKeyLimitModal}>
+          <div className={`modal-content ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">API Key Limit Reached</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseKeyLimitModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              {typeof user?.apiKeyLimit === "number" && user.apiKeyLimit > 0 ? (
+                <p style={{ marginBottom: "1rem" }}>
+                  This project has reached the maximum of <strong>{user.apiKeyLimit}</strong> API keys allowed on your current plan.
+                </p>
+              ) : (
+                <p style={{ marginBottom: "1rem" }}>
+                  The API key limit has been reached for this project on your current plan.
+                </p>
+              )}
+              <p>
+                Upgrade your plan to add more API keys to this project.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCloseKeyLimitModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleUpgrade}
+              >
+                Upgrade Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

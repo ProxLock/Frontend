@@ -1,29 +1,35 @@
 import { useAuth } from "@clerk/clerk-react";
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
-import { useSignupContext } from "../contexts/SignupContext";
 import { useUserContext } from "../contexts/UserContext";
 import { useFetchProjects } from "../hooks/useFetchProjects";
 import ErrorToast from "../components/ErrorToast";
+import { parseKeyParams, buildKeyParamsUrl } from "../utils/keyParams";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function HomePage() {
+export default function CreateKeyPage() {
   const { getToken } = useAuth();
   const { user } = useUserContext();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const { projects, loading, error, fetchProjects } = useFetchProjects();
+  
+  const [errorToast, setErrorToast] = useState<string | null>(null);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [showKeyLimitModal, setShowKeyLimitModal] = useState(false);
   const [isClosingModal, setIsClosingModal] = useState(false);
+  const [isClosingKeyLimitModal, setIsClosingKeyLimitModal] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
     name: "",
     description: "",
   });
   const [creating, setCreating] = useState(false);
-  const [errorToast, setErrorToast] = useState<string | null>(null);
 
+  // Parse query parameters for key creation
+  const keyParams = parseKeyParams(searchParams);
 
   useEffect(() => {
     fetchProjects();
@@ -66,16 +72,17 @@ export default function HomePage() {
 
       // Refresh projects list
       await fetchProjects();
-
+      
       // Refresh sidebar
       refreshProjects();
 
       // Close modal
       handleCloseModal();
 
-      // Navigate to the new project
+      // Navigate to the new project's create-key route with query params
       if (newProject.id) {
-        navigate(`/projects/${newProject.id}`);
+        const params = buildKeyParamsUrl(keyParams);
+        navigate(`/projects/${newProject.id}/create-key?${params}`);
       }
     } catch (err) {
       console.error("Error creating project:", err);
@@ -94,8 +101,33 @@ export default function HomePage() {
     }, 300);
   };
 
-  const userName = user?.fullName || user?.primaryEmailAddress?.emailAddress || "there";
-  const { isNewSignup } = useSignupContext();
+  const handleSelectProject = (projectId: string) => {
+    // Find the selected project
+    const selectedProject = projects.find(p => p.id === projectId);
+    
+    // Check if project has reached the API key limit (only enforce if limit > 0, -1 means unlimited)
+    if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && selectedProject?.keys && selectedProject.keys.length >= user.apiKeyLimit) {
+      setShowKeyLimitModal(true);
+      return;
+    }
+    
+    // Build query params (without openModal flag since we're using the create-key route)
+    const params = buildKeyParamsUrl(keyParams);
+    // Navigate to the create-key route which will auto-open the modal
+    navigate(`/projects/${projectId}/create-key?${params}`);
+  };
+
+  const handleCloseKeyLimitModal = () => {
+    setIsClosingKeyLimitModal(true);
+    setTimeout(() => {
+      setShowKeyLimitModal(false);
+      setIsClosingKeyLimitModal(false);
+    }, 300);
+  };
+
+  const handleUpgrade = () => {
+    navigate("/pricing");
+  };
 
   return (
     <div className="homepage-container">
@@ -105,33 +137,14 @@ export default function HomePage() {
           onClose={() => setErrorToast(null)}
         />
       )}
-      {/* Header Section */}
+      
       <header className="homepage-header">
-        <h1 className="hero-title">{isNewSignup ? "Welcome" : "Welcome back"}, {userName}!</h1>
+        <h1 className="hero-title">Create New API Key</h1>
         <p className="hero-subtext">
-          Manage your API proxy projects and keys from one central dashboard.
+          Select a project to add your API key to, or create a new project.
         </p>
       </header>
 
-      {/* Beta Pricing Banner */}
-      <div className="beta-banner">
-        <div className="beta-banner-content">
-          <div className="beta-banner-icon">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 1L12.5 6.5L18.5 7.5L14 11.5L15 17.5L10 14.5L5 17.5L6 11.5L1.5 7.5L7.5 6.5L10 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
-          </div>
-          <div className="beta-banner-text">
-            <strong>Beta Pricing Available</strong>
-            <span>Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
-          </div>
-          <Link to="/pricing" className="beta-banner-btn">
-            View Plans
-          </Link>
-        </div>
-      </div>
-
-      {/* Main Content */}
       <main className="homepage-main">
         {loading ? (
           <div className="loading-state">
@@ -151,38 +164,14 @@ export default function HomePage() {
               Retry
             </button>
           </div>
-        ) : projects.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📁</div>
-            <h2>No projects yet</h2>
-            <p>Get started by creating your first project to manage API keys securely.</p>
-            <button
-              className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
-              onClick={() => {
-                if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
-                  // Do nothing on click, tooltip explains it
-                  return;
-                } else {
-                  setShowCreateProjectModal(true);
-                }
-              }}
-              data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
-            >
-              Create Your First Project
-            </button>
-          </div>
         ) : (
           <>
             <div className="projects-header">
-              <div className="projects-header-title">
-                <h2 className="section-title">Your Projects</h2>
-                <span className="project-count-badge">{projects.length}</span>
-              </div>
+              <h2 className="section-title">Select a Project</h2>
               <button
                 className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
                   if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
-                    // Do nothing on click
                     return;
                   } else {
                     setShowCreateProjectModal(true);
@@ -190,13 +179,38 @@ export default function HomePage() {
                 }}
                 data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
               >
-                + Create Project
+                + Create New Project
               </button>
             </div>
-            <div className="projects-grid">
-              {projects.map((project, index) => {
-                const ProjectCardContent = (
-                  <>
+
+            {projects.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📁</div>
+                <h2>No projects yet</h2>
+                <p>Create a project to add your API key to.</p>
+                <button
+                  className={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                  onClick={() => {
+                    if (user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit) {
+                      return;
+                    } else {
+                      setShowCreateProjectModal(true);
+                    }
+                  }}
+                  data-tooltip={user?.projectLimit !== undefined && user.projectLimit > 0 && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+                >
+                  Create Your First Project
+                </button>
+              </div>
+            ) : (
+              <div className="projects-grid">
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => project.id && handleSelectProject(project.id)}
+                    className="project-card"
+                    style={{ cursor: "pointer", textAlign: "left", border: "2px solid transparent" }}
+                  >
                     <div className="project-card-header">
                       <h3 className="project-name">
                         {project.name || "Unnamed Project"}
@@ -209,31 +223,16 @@ export default function HomePage() {
                       {project.description || "No description provided"}
                     </p>
                     <div className="project-card-footer">
-                      <span className="view-link">View details →</span>
+                      <span className="view-link">Select project →</span>
                     </div>
-                  </>
-                );
-
-                return project.id ? (
-                  <Link
-                    key={project.id}
-                    to={`/projects/${project.id}`}
-                    className="project-card"
-                  >
-                    {ProjectCardContent}
-                  </Link>
-                ) : (
-                  <div key={index} className="project-card" style={{ cursor: 'default', opacity: 0.7 }}>
-                    {ProjectCardContent}
-                  </div>
-                );
-              })}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </main>
 
-      {/* Footer */}
       <footer className="page-footer">
         © {new Date().getFullYear()} ProxLock. All rights reserved.
       </footer>
@@ -292,6 +291,52 @@ export default function HomePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Key Limit Modal */}
+      {showKeyLimitModal && (
+        <div className={`modal-overlay ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={handleCloseKeyLimitModal}>
+          <div className={`modal-content ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">API Key Limit Reached</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseKeyLimitModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: "1rem" }}>
+                This project has reached the maximum of{" "}
+                <strong>
+                  {user?.apiKeyLimit === -1 ? "unlimited" : user?.apiKeyLimit}
+                </strong>{" "}
+                API keys allowed on your current plan.
+              </p>
+              <p>
+                Upgrade your plan to add more API keys to this project.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCloseKeyLimitModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleUpgrade}
+              >
+                Upgrade Plan
+              </button>
+            </div>
           </div>
         </div>
       )}
