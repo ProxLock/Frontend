@@ -2757,9 +2757,15 @@ export default function DashboardPage() {
               </button>
             </div>
             <div className="modal-body">
-              <p style={{ marginBottom: "1rem" }}>
-                This project has reached the maximum of <strong>{user?.apiKeyLimit}</strong> API keys allowed on your current plan.
-              </p>
+              {typeof user?.apiKeyLimit === "number" && user.apiKeyLimit > 0 ? (
+                <p style={{ marginBottom: "1rem" }}>
+                  This project has reached the maximum of <strong>{user.apiKeyLimit}</strong> API keys allowed on your current plan.
+                </p>
+              ) : (
+                <p style={{ marginBottom: "1rem" }}>
+                  The API key limit has been reached for this project on your current plan.
+                </p>
+              )}
               <p>
                 Upgrade your plan to add more API keys to this project.
               </p>
