@@ -454,7 +454,7 @@ export default function DashboardPage() {
       // Redirect to base project URL
       navigate(`/projects/${projectId}`, { replace: true });
     }
-  }, [loading, project, searchParams, location.pathname, navigate, projectId, user, keys.length]);
+  }, [loading, project, searchParams, location.pathname, navigate, projectId]);
 
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {
