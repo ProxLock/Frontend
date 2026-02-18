@@ -109,7 +109,7 @@ export default function DashboardPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const [project, setProject] = useState<Project | null>(null);
   const [keys, setKeys] = useState<APIKey[]>([]);
@@ -420,15 +420,13 @@ export default function DashboardPage() {
     fetchData();
   }, [projectId, getToken]);
 
-  // Handle query parameters for auto-opening modal with prefilled data
-  // Also handle /projects/:projectId/create-key route
+  // Handle /projects/:projectId/create-key route
   useEffect(() => {
     if (loading || !project) return;
 
     const isCreateKeyRoute = projectId && location.pathname === `/projects/${projectId}/create-key`;
-    const openModal = searchParams.get("openModal");
     
-    if (openModal === "true" || isCreateKeyRoute) {
+    if (isCreateKeyRoute) {
       const keyParams = parseKeyParams(searchParams);
 
       // Prefill form data
@@ -444,14 +442,10 @@ export default function DashboardPage() {
       // Open the modal
       setShowAddKeyModal(true);
 
-      // Clear the query parameters and redirect to base project URL if on create-key route
-      if (isCreateKeyRoute) {
-        navigate(`/projects/${projectId}`, { replace: true });
-      } else {
-        setSearchParams({});
-      }
+      // Redirect to base project URL
+      navigate(`/projects/${projectId}`, { replace: true });
     }
-  }, [loading, project, searchParams, setSearchParams, location.pathname, navigate, projectId]);
+  }, [loading, project, searchParams, location.pathname, navigate, projectId]);
 
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {

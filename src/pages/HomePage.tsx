@@ -1,6 +1,6 @@
 import { useAuth } from "@clerk/clerk-react";
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useSignupContext } from "../contexts/SignupContext";
 import { useUserContext } from "../contexts/UserContext";
@@ -13,7 +13,6 @@ export default function HomePage() {
   const { getToken } = useAuth();
   const { user } = useUserContext();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const { projects, loading, error, fetchProjects } = useFetchProjects();
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
@@ -29,21 +28,6 @@ export default function HomePage() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
-
-  // Redirect to /create-key if query parameters are present
-  useEffect(() => {
-    const hasKeyParams =
-      searchParams.has("name") ||
-      searchParams.has("key") ||
-      searchParams.has("allowsWeb") ||
-      searchParams.has("whitelistedUrls") ||
-      searchParams.has("description") ||
-      searchParams.has("rateLimit");
-    if (hasKeyParams) {
-      // Redirect to /create-key with the same query parameters
-      navigate(`/create-key?${searchParams.toString()}`);
-    }
-  }, [searchParams, navigate]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
