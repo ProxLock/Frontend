@@ -311,7 +311,11 @@ export default function CreateKeyPage() {
             </div>
             <div className="modal-body">
               <p style={{ marginBottom: "1rem" }}>
-                This project has reached the maximum of <strong>{user?.apiKeyLimit}</strong> API keys allowed on your current plan.
+                This project has reached the maximum of{" "}
+                <strong>
+                  {user?.apiKeyLimit === -1 ? "unlimited" : user?.apiKeyLimit}
+                </strong>{" "}
+                API keys allowed on your current plan.
               </p>
               <p>
                 Upgrade your plan to add more API keys to this project.
