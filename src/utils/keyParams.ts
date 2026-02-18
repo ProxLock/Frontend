@@ -47,7 +47,7 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
 /**
  * Build URL search params from key creation parameters
  */
-export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: boolean = true): string {
+export function buildKeyParamsUrl(params: Partial<KeyParams>): string {
   const searchParams = new URLSearchParams();
   
   if (params.name) searchParams.set("name", params.name);
@@ -60,9 +60,6 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: 
   // Only include rateLimit if it's >= 1 (not -1/unlimited and not 0)
   if (params.rateLimit !== undefined && params.rateLimit >= 1) {
     searchParams.set("rateLimit", params.rateLimit.toString());
-  }
-  if (includeOpenModal) {
-    searchParams.set("openModal", "true");
   }
   
   return searchParams.toString();

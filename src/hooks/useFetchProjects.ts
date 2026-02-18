@@ -39,5 +39,5 @@ export function useFetchProjects() {
     }
   }, [getToken]);
 
-  return { projects, loading, error, fetchProjects, setProjects };
+  return { projects, loading, error, fetchProjects };
 }

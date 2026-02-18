@@ -429,8 +429,8 @@ export default function DashboardPage() {
     const isCreateKeyRoute = projectId && location.pathname === `/projects/${projectId}/create-key`;
     
     if (isCreateKeyRoute) {
-      // Check if API key limit is reached
-      if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+      // Check if API key limit is reached (only enforce if limit > 0, -1 means unlimited)
+      if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
         setShowKeyLimitModal(true);
         navigate(`/projects/${projectId}`, { replace: true });
         return;

@@ -79,10 +79,10 @@ export default function CreateKeyPage() {
       // Close modal
       handleCloseModal();
 
-      // Navigate to the new project with query params
+      // Navigate to the new project's create-key route with query params
       if (newProject.id) {
-        const params = buildKeyParamsUrl(keyParams, true);
-        navigate(`/projects/${newProject.id}?${params}`);
+        const params = buildKeyParamsUrl(keyParams);
+        navigate(`/projects/${newProject.id}/create-key?${params}`);
       }
     } catch (err) {
       console.error("Error creating project:", err);
@@ -105,14 +105,14 @@ export default function CreateKeyPage() {
     // Find the selected project
     const selectedProject = projects.find(p => p.id === projectId);
     
-    // Check if project has reached the API key limit
-    if (user?.apiKeyLimit !== undefined && selectedProject?.keys && selectedProject.keys.length >= user.apiKeyLimit) {
+    // Check if project has reached the API key limit (only enforce if limit > 0, -1 means unlimited)
+    if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && selectedProject?.keys && selectedProject.keys.length >= user.apiKeyLimit) {
       setShowKeyLimitModal(true);
       return;
     }
     
     // Build query params (without openModal flag since we're using the create-key route)
-    const params = buildKeyParamsUrl(keyParams, false);
+    const params = buildKeyParamsUrl(keyParams);
     // Navigate to the create-key route which will auto-open the modal
     navigate(`/projects/${projectId}/create-key?${params}`);
   };
