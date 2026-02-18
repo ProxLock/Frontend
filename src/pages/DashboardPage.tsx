@@ -7,6 +7,7 @@ import ErrorToast from "../components/ErrorToast";
 import NotFoundPage from "./NotFoundPage";
 import type { Project } from "../types";
 import { copyToClipboard } from "../utils/clipboard";
+import { parseKeyParams } from "../utils/keyParams";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -424,22 +425,16 @@ export default function DashboardPage() {
 
     const openModal = searchParams.get("openModal");
     if (openModal === "true") {
-      const keyName = searchParams.get("name") || "";
-      const keyValue = searchParams.get("key") || "";
-      const allowsWeb = searchParams.get("allowsWeb") === "true";
-      const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
-      const whitelistedUrls = whitelistedUrlsParam
-        ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
-        : [];
+      const keyParams = parseKeyParams(searchParams);
 
       // Prefill form data
       setFormData({
-        name: keyName,
+        name: keyParams.name,
         description: "",
-        apiKey: keyValue,
-        whitelistedUrls: whitelistedUrls,
+        apiKey: keyParams.key,
+        whitelistedUrls: keyParams.whitelistedUrls,
         rateLimit: -1,
-        allowsWeb: allowsWeb,
+        allowsWeb: keyParams.allowsWeb,
       });
 
       // Open the modal

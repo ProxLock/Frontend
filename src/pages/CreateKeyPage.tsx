@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useUserContext } from "../contexts/UserContext";
 import ErrorToast from "../components/ErrorToast";
+import { parseKeyParams, buildKeyParamsUrl } from "../utils/keyParams";
 import type { Project } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -28,13 +29,8 @@ export default function CreateKeyPage() {
   const [creating, setCreating] = useState(false);
 
   // Parse query parameters for key creation
-  const keyName = searchParams.get("name") || "";
-  const keyValue = searchParams.get("key") || "";
-  const allowsWeb = searchParams.get("allowsWeb") === "true";
-  const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
-  const whitelistedUrls = whitelistedUrlsParam
-    ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
-    : [];
+  const keyParams = parseKeyParams(searchParams);
+  const { name: keyName, key: keyValue, allowsWeb, whitelistedUrls } = keyParams;
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -115,14 +111,8 @@ export default function CreateKeyPage() {
 
       // Navigate to the new project with query params
       if (newProject.id) {
-        const params = new URLSearchParams();
-        if (keyName) params.set("name", keyName);
-        if (keyValue) params.set("key", keyValue);
-        if (allowsWeb) params.set("allowsWeb", "true");
-        if (whitelistedUrls.length > 0) params.set("whitelistedUrls", whitelistedUrls.join(","));
-        params.set("openModal", "true");
-        
-        navigate(`/projects/${newProject.id}?${params.toString()}`);
+        const params = buildKeyParamsUrl(keyParams, true);
+        navigate(`/projects/${newProject.id}?${params}`);
       }
     } catch (err) {
       console.error("Error creating project:", err);
@@ -142,14 +132,8 @@ export default function CreateKeyPage() {
   };
 
   const handleSelectProject = (projectId: string) => {
-    const params = new URLSearchParams();
-    if (keyName) params.set("name", keyName);
-    if (keyValue) params.set("key", keyValue);
-    if (allowsWeb) params.set("allowsWeb", "true");
-    if (whitelistedUrls.length > 0) params.set("whitelistedUrls", whitelistedUrls.join(","));
-    params.set("openModal", "true");
-    
-    navigate(`/projects/${projectId}?${params.toString()}`);
+    const params = buildKeyParamsUrl(keyParams, true);
+    navigate(`/projects/${projectId}?${params}`);
   };
 
   return (
