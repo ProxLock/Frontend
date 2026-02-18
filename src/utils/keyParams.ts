@@ -21,7 +21,14 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
   const allowsWeb = searchParams.get("allowsWeb") === "true";
   const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
   const whitelistedUrls = whitelistedUrlsParam
-    ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
+    ? whitelistedUrlsParam.split(",").map(url => {
+        let cleanUrl = url.trim();
+        // Remove protocol if present
+        cleanUrl = cleanUrl.replace(/^https?:\/\//i, "");
+        // Remove leading slashes
+        cleanUrl = cleanUrl.replace(/^\/+/, "");
+        return cleanUrl;
+      }).filter(url => url.length > 0)
     : [];
   const rateLimitParam = searchParams.get("rateLimit");
   const rateLimit = rateLimitParam ? parseInt(rateLimitParam, 10) : -1;
@@ -32,7 +39,8 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
     description,
     allowsWeb,
     whitelistedUrls,
-    rateLimit: isNaN(rateLimit) ? -1 : rateLimit,
+    // Rate limit must be >= 1 or -1 for unlimited
+    rateLimit: isNaN(rateLimit) || rateLimit < 1 ? -1 : rateLimit,
   };
 }
 
@@ -49,7 +57,8 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: 
   if (params.whitelistedUrls && params.whitelistedUrls.length > 0) {
     searchParams.set("whitelistedUrls", params.whitelistedUrls.join(","));
   }
-  if (params.rateLimit !== undefined && params.rateLimit >= 0) {
+  // Only include rateLimit if it's >= 1 (not -1/unlimited and not 0)
+  if (params.rateLimit !== undefined && params.rateLimit >= 1) {
     searchParams.set("rateLimit", params.rateLimit.toString());
   }
   if (includeOpenModal) {
