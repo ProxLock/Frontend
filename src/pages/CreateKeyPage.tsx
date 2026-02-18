@@ -111,8 +111,10 @@ export default function CreateKeyPage() {
       return;
     }
     
-    const params = buildKeyParamsUrl(keyParams, true);
-    navigate(`/projects/${projectId}?${params}`);
+    // Build query params (without openModal flag since we're using the create-key route)
+    const params = buildKeyParamsUrl(keyParams, false);
+    // Navigate to the create-key route which will auto-open the modal
+    navigate(`/projects/${projectId}/create-key?${params}`);
   };
 
   const handleCloseKeyLimitModal = () => {
