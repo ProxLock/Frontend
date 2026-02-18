@@ -49,7 +49,7 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: 
   if (params.whitelistedUrls && params.whitelistedUrls.length > 0) {
     searchParams.set("whitelistedUrls", params.whitelistedUrls.join(","));
   }
-  if (params.rateLimit && params.rateLimit > 0) {
+  if (params.rateLimit !== undefined && params.rateLimit >= 0) {
     searchParams.set("rateLimit", params.rateLimit.toString());
   }
   if (includeOpenModal) {
