@@ -433,7 +433,7 @@ export default function DashboardPage() {
         description: "",
         apiKey: keyParams.key,
         whitelistedUrls: keyParams.whitelistedUrls,
-        rateLimit: -1,
+        rateLimit: keyParams.rateLimit,
         allowsWeb: keyParams.allowsWeb,
       });
 

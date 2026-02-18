@@ -7,6 +7,7 @@ export interface KeyParams {
   key: string;
   allowsWeb: boolean;
   whitelistedUrls: string[];
+  rateLimit: number;
 }
 
 /**
@@ -20,12 +21,15 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
   const whitelistedUrls = whitelistedUrlsParam
     ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
     : [];
+  const rateLimitParam = searchParams.get("rateLimit");
+  const rateLimit = rateLimitParam ? parseInt(rateLimitParam, 10) : -1;
 
   return {
     name: keyName,
     key: keyValue,
     allowsWeb,
     whitelistedUrls,
+    rateLimit: isNaN(rateLimit) ? -1 : rateLimit,
   };
 }
 
@@ -40,6 +44,9 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>, includeOpenModal: 
   if (params.allowsWeb) searchParams.set("allowsWeb", "true");
   if (params.whitelistedUrls && params.whitelistedUrls.length > 0) {
     searchParams.set("whitelistedUrls", params.whitelistedUrls.join(","));
+  }
+  if (params.rateLimit !== undefined && params.rateLimit !== -1) {
+    searchParams.set("rateLimit", params.rateLimit.toString());
   }
   if (includeOpenModal) {
     searchParams.set("openModal", "true");

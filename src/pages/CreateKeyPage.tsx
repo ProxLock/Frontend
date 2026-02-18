@@ -30,7 +30,7 @@ export default function CreateKeyPage() {
 
   // Parse query parameters for key creation
   const keyParams = parseKeyParams(searchParams);
-  const { name: keyName, key: keyValue, allowsWeb, whitelistedUrls } = keyParams;
+  const { name: keyName, key: keyValue, allowsWeb, whitelistedUrls, rateLimit } = keyParams;
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -153,7 +153,7 @@ export default function CreateKeyPage() {
       </header>
 
       {/* Show parsed parameters if any */}
-      {(keyName || keyValue || whitelistedUrls.length > 0) && (
+      {(keyName || keyValue || whitelistedUrls.length > 0 || rateLimit > 0) && (
         <div className="beta-banner" style={{ marginBottom: "2rem" }}>
           <div className="beta-banner-content">
             <div className="beta-banner-icon">
@@ -166,6 +166,7 @@ export default function CreateKeyPage() {
               <span>
                 {keyName && `Name: ${keyName}. `}
                 {whitelistedUrls.length > 0 && `URLs: ${whitelistedUrls.join(", ")}. `}
+                {rateLimit > 0 && `Rate limit: ${rateLimit} req/min. `}
                 {allowsWeb && "Web requests enabled."}
               </span>
             </div>
