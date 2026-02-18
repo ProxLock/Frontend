@@ -119,6 +119,8 @@ export default function DashboardPage() {
   const [isNotFound, setIsNotFound] = useState(false);
   const [showAddKeyModal, setShowAddKeyModal] = useState(false);
   const [isClosingModal, setIsClosingModal] = useState(false);
+  const [showKeyLimitModal, setShowKeyLimitModal] = useState(false);
+  const [isClosingKeyLimitModal, setIsClosingKeyLimitModal] = useState(false);
   const [showPartialKey, setShowPartialKey] = useState(false);
   const [isClosingPartialKey, setIsClosingPartialKey] = useState(false);
   const [partialKeyToShow, setPartialKeyToShow] = useState<string>("");
@@ -427,6 +429,13 @@ export default function DashboardPage() {
     const isCreateKeyRoute = projectId && location.pathname === `/projects/${projectId}/create-key`;
     
     if (isCreateKeyRoute) {
+      // Check if API key limit is reached
+      if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+        setShowKeyLimitModal(true);
+        navigate(`/projects/${projectId}`, { replace: true });
+        return;
+      }
+
       const keyParams = parseKeyParams(searchParams);
 
       // Prefill form data
@@ -445,7 +454,7 @@ export default function DashboardPage() {
       // Redirect to base project URL
       navigate(`/projects/${projectId}`, { replace: true });
     }
-  }, [loading, project, searchParams, location.pathname, navigate, projectId]);
+  }, [loading, project, searchParams, location.pathname, navigate, projectId, user, keys.length]);
 
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {
@@ -558,6 +567,18 @@ export default function DashboardPage() {
       },
       setErrorToast
     );
+  };
+
+  const handleCloseKeyLimitModal = () => {
+    setIsClosingKeyLimitModal(true);
+    setTimeout(() => {
+      setShowKeyLimitModal(false);
+      setIsClosingKeyLimitModal(false);
+    }, 300);
+  };
+
+  const handleUpgrade = () => {
+    navigate("/pricing");
   };
 
   const handleCloseModal = () => {
@@ -2720,6 +2741,48 @@ export default function DashboardPage() {
           </div >
         )
       }
+
+      {/* Key Limit Modal */}
+      {showKeyLimitModal && (
+        <div className={`modal-overlay ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={handleCloseKeyLimitModal}>
+          <div className={`modal-content ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">API Key Limit Reached</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseKeyLimitModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: "1rem" }}>
+                This project has reached the maximum of <strong>{user?.apiKeyLimit}</strong> API keys allowed on your current plan.
+              </p>
+              <p>
+                Upgrade your plan to add more API keys to this project.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCloseKeyLimitModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleUpgrade}
+              >
+                Upgrade Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

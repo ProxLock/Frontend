@@ -19,7 +19,9 @@ export default function CreateKeyPage() {
   
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [showKeyLimitModal, setShowKeyLimitModal] = useState(false);
   const [isClosingModal, setIsClosingModal] = useState(false);
+  const [isClosingKeyLimitModal, setIsClosingKeyLimitModal] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
     name: "",
     description: "",
@@ -100,8 +102,29 @@ export default function CreateKeyPage() {
   };
 
   const handleSelectProject = (projectId: string) => {
+    // Find the selected project
+    const selectedProject = projects.find(p => p.id === projectId);
+    
+    // Check if project has reached the API key limit
+    if (user?.apiKeyLimit !== undefined && selectedProject?.keys && selectedProject.keys.length >= user.apiKeyLimit) {
+      setShowKeyLimitModal(true);
+      return;
+    }
+    
     const params = buildKeyParamsUrl(keyParams, true);
     navigate(`/projects/${projectId}?${params}`);
+  };
+
+  const handleCloseKeyLimitModal = () => {
+    setIsClosingKeyLimitModal(true);
+    setTimeout(() => {
+      setShowKeyLimitModal(false);
+      setIsClosingKeyLimitModal(false);
+    }, 300);
+  };
+
+  const handleUpgrade = () => {
+    navigate("/pricing");
   };
 
   return (
@@ -266,6 +289,48 @@ export default function CreateKeyPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Key Limit Modal */}
+      {showKeyLimitModal && (
+        <div className={`modal-overlay ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={handleCloseKeyLimitModal}>
+          <div className={`modal-content ${isClosingKeyLimitModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">API Key Limit Reached</h2>
+              <button
+                className="modal-close-btn"
+                onClick={handleCloseKeyLimitModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: "1rem" }}>
+                This project has reached the maximum of <strong>{user?.apiKeyLimit}</strong> API keys allowed on your current plan.
+              </p>
+              <p>
+                Upgrade your plan to add more API keys to this project.
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleCloseKeyLimitModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleUpgrade}
+              >
+                Upgrade Plan
+              </button>
+            </div>
           </div>
         </div>
       )}
