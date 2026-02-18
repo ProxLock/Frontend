@@ -62,9 +62,13 @@ export default function HomePage() {
 
   // Redirect to /create-key if query parameters are present
   useEffect(() => {
-    const hasKeyParams = searchParams.has("name") || searchParams.has("key") || 
-                         searchParams.has("allowsWeb") || searchParams.has("whitelistedUrls");
-    
+    const hasKeyParams =
+      searchParams.has("name") ||
+      searchParams.has("key") ||
+      searchParams.has("allowsWeb") ||
+      searchParams.has("whitelistedUrls") ||
+      searchParams.has("description") ||
+      searchParams.has("rateLimit");
     if (hasKeyParams) {
       // Redirect to /create-key with the same query parameters
       navigate(`/create-key?${searchParams.toString()}`);
