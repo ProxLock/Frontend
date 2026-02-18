@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useProjectsContext } from "../contexts/ProjectsContext";
 import { useUserContext } from "../contexts/UserContext";
@@ -107,6 +107,7 @@ export default function DashboardPage() {
   const { user } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
   const [project, setProject] = useState<Project | null>(null);
   const [keys, setKeys] = useState<APIKey[]>([]);
@@ -416,6 +417,38 @@ export default function DashboardPage() {
 
     fetchData();
   }, [projectId, getToken]);
+
+  // Handle query parameters for auto-opening modal with prefilled data
+  useEffect(() => {
+    if (loading || !project) return;
+
+    const openModal = searchParams.get("openModal");
+    if (openModal === "true") {
+      const keyName = searchParams.get("name") || "";
+      const keyValue = searchParams.get("key") || "";
+      const allowsWeb = searchParams.get("allowsWeb") === "true";
+      const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
+      const whitelistedUrls = whitelistedUrlsParam
+        ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
+        : [];
+
+      // Prefill form data
+      setFormData({
+        name: keyName,
+        description: "",
+        apiKey: keyValue,
+        whitelistedUrls: whitelistedUrls,
+        rateLimit: -1,
+        allowsWeb: allowsWeb,
+      });
+
+      // Open the modal
+      setShowAddKeyModal(true);
+
+      // Clear the query parameters
+      setSearchParams({});
+    }
+  }, [loading, project, searchParams, setSearchParams]);
 
   const handleDeleteKey = async (keyId: string) => {
     if (!projectId || !confirm("Are you sure you want to delete this API key?")) {

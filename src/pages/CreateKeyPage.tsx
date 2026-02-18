@@ -1,23 +1,24 @@
 import { useAuth } from "@clerk/clerk-react";
 import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProjectsContext } from "../contexts/ProjectsContext";
-import { useSignupContext } from "../contexts/SignupContext";
 import { useUserContext } from "../contexts/UserContext";
 import ErrorToast from "../components/ErrorToast";
 import type { Project } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export default function HomePage() {
+export default function CreateKeyPage() {
   const { getToken } = useAuth();
   const { user } = useUserContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { refreshProjects } = useProjectsContext();
+  
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
   const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
   const [isClosingModal, setIsClosingModal] = useState(false);
   const [projectFormData, setProjectFormData] = useState({
@@ -25,7 +26,15 @@ export default function HomePage() {
     description: "",
   });
   const [creating, setCreating] = useState(false);
-  const [errorToast, setErrorToast] = useState<string | null>(null);
+
+  // Parse query parameters for key creation
+  const keyName = searchParams.get("name") || "";
+  const keyValue = searchParams.get("key") || "";
+  const allowsWeb = searchParams.get("allowsWeb") === "true";
+  const whitelistedUrlsParam = searchParams.get("whitelistedUrls") || "";
+  const whitelistedUrls = whitelistedUrlsParam
+    ? whitelistedUrlsParam.split(",").map(url => url.trim()).filter(url => url.length > 0)
+    : [];
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -59,17 +68,6 @@ export default function HomePage() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
-
-  // Redirect to /create-key if query parameters are present
-  useEffect(() => {
-    const hasKeyParams = searchParams.has("name") || searchParams.has("key") || 
-                         searchParams.has("allowsWeb") || searchParams.has("whitelistedUrls");
-    
-    if (hasKeyParams) {
-      // Redirect to /create-key with the same query parameters
-      navigate(`/create-key?${searchParams.toString()}`);
-    }
-  }, [searchParams, navigate]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,29 +105,24 @@ export default function HomePage() {
       const newProject = await res.json();
 
       // Refresh projects list
-      const projectsRes = await fetch(`${API_URL}/me/projects`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json; charset=utf-8",
-        },
-        credentials: "include",
-      });
-
-      if (projectsRes.ok) {
-        const projectsData = await projectsRes.json();
-        setProjects(Array.isArray(projectsData) ? projectsData : []);
-      }
-
+      await fetchProjects();
+      
       // Refresh sidebar
       refreshProjects();
 
       // Close modal
       handleCloseModal();
 
-      // Navigate to the new project
+      // Navigate to the new project with query params
       if (newProject.id) {
-        navigate(`/projects/${newProject.id}`);
+        const params = new URLSearchParams();
+        if (keyName) params.set("name", keyName);
+        if (keyValue) params.set("key", keyValue);
+        if (allowsWeb) params.set("allowsWeb", "true");
+        if (whitelistedUrls.length > 0) params.set("whitelistedUrls", whitelistedUrls.join(","));
+        params.set("openModal", "true");
+        
+        navigate(`/projects/${newProject.id}?${params.toString()}`);
       }
     } catch (err) {
       console.error("Error creating project:", err);
@@ -148,8 +141,16 @@ export default function HomePage() {
     }, 300);
   };
 
-  const userName = user?.fullName || user?.primaryEmailAddress?.emailAddress || "there";
-  const { isNewSignup } = useSignupContext();
+  const handleSelectProject = (projectId: string) => {
+    const params = new URLSearchParams();
+    if (keyName) params.set("name", keyName);
+    if (keyValue) params.set("key", keyValue);
+    if (allowsWeb) params.set("allowsWeb", "true");
+    if (whitelistedUrls.length > 0) params.set("whitelistedUrls", whitelistedUrls.join(","));
+    params.set("openModal", "true");
+    
+    navigate(`/projects/${projectId}?${params.toString()}`);
+  };
 
   return (
     <div className="homepage-container">
@@ -159,33 +160,35 @@ export default function HomePage() {
           onClose={() => setErrorToast(null)}
         />
       )}
-      {/* Header Section */}
+      
       <header className="homepage-header">
-        <h1 className="hero-title">{isNewSignup ? "Welcome" : "Welcome back"}, {userName}!</h1>
+        <h1 className="hero-title">Create New API Key</h1>
         <p className="hero-subtext">
-          Manage your API proxy projects and keys from one central dashboard.
+          Select a project to add your API key to, or create a new project.
         </p>
       </header>
 
-      {/* Beta Pricing Banner */}
-      <div className="beta-banner">
-        <div className="beta-banner-content">
-          <div className="beta-banner-icon">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 1L12.5 6.5L18.5 7.5L14 11.5L15 17.5L10 14.5L5 17.5L6 11.5L1.5 7.5L7.5 6.5L10 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
+      {/* Show parsed parameters if any */}
+      {(keyName || keyValue || whitelistedUrls.length > 0) && (
+        <div className="beta-banner" style={{ marginBottom: "2rem" }}>
+          <div className="beta-banner-content">
+            <div className="beta-banner-icon">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 1L12.5 6.5L18.5 7.5L14 11.5L15 17.5L10 14.5L5 17.5L6 11.5L1.5 7.5L7.5 6.5L10 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            </div>
+            <div className="beta-banner-text">
+              <strong>Key Details Ready</strong>
+              <span>
+                {keyName && `Name: ${keyName}. `}
+                {whitelistedUrls.length > 0 && `URLs: ${whitelistedUrls.join(", ")}. `}
+                {allowsWeb && "Web requests enabled."}
+              </span>
+            </div>
           </div>
-          <div className="beta-banner-text">
-            <strong>Beta Pricing Available</strong>
-            <span>Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
-          </div>
-          <Link to="/pricing" className="beta-banner-btn">
-            View Plans
-          </Link>
         </div>
-      </div>
+      )}
 
-      {/* Main Content */}
       <main className="homepage-main">
         {loading ? (
           <div className="loading-state">
@@ -205,38 +208,14 @@ export default function HomePage() {
               Retry
             </button>
           </div>
-        ) : projects.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📁</div>
-            <h2>No projects yet</h2>
-            <p>Get started by creating your first project to manage API keys securely.</p>
-            <button
-              className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
-              onClick={() => {
-                if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
-                  // Do nothing on click, tooltip explains it
-                  return;
-                } else {
-                  setShowCreateProjectModal(true);
-                }
-              }}
-              data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
-            >
-              Create Your First Project
-            </button>
-          </div>
         ) : (
           <>
             <div className="projects-header">
-              <div className="projects-header-title">
-                <h2 className="section-title">Your Projects</h2>
-                <span className="project-count-badge">{projects.length}</span>
-              </div>
+              <h2 className="section-title">Select a Project</h2>
               <button
                 className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
                   if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
-                    // Do nothing on click
                     return;
                   } else {
                     setShowCreateProjectModal(true);
@@ -244,13 +223,38 @@ export default function HomePage() {
                 }}
                 data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
               >
-                + Create Project
+                + Create New Project
               </button>
             </div>
-            <div className="projects-grid">
-              {projects.map((project, index) => {
-                const ProjectCardContent = (
-                  <>
+
+            {projects.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📁</div>
+                <h2>No projects yet</h2>
+                <p>Create a project to add your API key to.</p>
+                <button
+                  className={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                  onClick={() => {
+                    if (user?.projectLimit !== undefined && projects.length >= user.projectLimit) {
+                      return;
+                    } else {
+                      setShowCreateProjectModal(true);
+                    }
+                  }}
+                  data-tooltip={user?.projectLimit !== undefined && projects.length >= user.projectLimit ? `You have reached your limit of ${user.projectLimit} projects. Upgrade plan to create more.` : undefined}
+                >
+                  Create Your First Project
+                </button>
+              </div>
+            ) : (
+              <div className="projects-grid">
+                {projects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => project.id && handleSelectProject(project.id)}
+                    className="project-card"
+                    style={{ cursor: "pointer", textAlign: "left", border: "2px solid transparent" }}
+                  >
                     <div className="project-card-header">
                       <h3 className="project-name">
                         {project.name || "Unnamed Project"}
@@ -263,31 +267,16 @@ export default function HomePage() {
                       {project.description || "No description provided"}
                     </p>
                     <div className="project-card-footer">
-                      <span className="view-link">View details →</span>
+                      <span className="view-link">Select project →</span>
                     </div>
-                  </>
-                );
-
-                return project.id ? (
-                  <Link
-                    key={project.id}
-                    to={`/projects/${project.id}`}
-                    className="project-card"
-                  >
-                    {ProjectCardContent}
-                  </Link>
-                ) : (
-                  <div key={index} className="project-card" style={{ cursor: 'default', opacity: 0.7 }}>
-                    {ProjectCardContent}
-                  </div>
-                );
-              })}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </main>
 
-      {/* Footer */}
       <footer className="page-footer">
         © {new Date().getFullYear()} ProxLock. All rights reserved.
       </footer>

@@ -6,6 +6,7 @@ import DashboardPage from "./pages/DashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PricingPage from "./pages/PricingPage";
 import UserAccessKeysPage from "./pages/UserAccessKeysPage";
+import CreateKeyPage from "./pages/CreateKeyPage";
 import Sidebar, { type SidebarRef } from "./components/Sidebar";
 import UpgradeBanner from "./components/UpgradeBanner";
 import { ProjectsProvider } from "./contexts/ProjectsContext";
@@ -32,6 +33,7 @@ function AppWithSidebar() {
             <UpgradeBanner />
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/create-key" element={<CreateKeyPage />} />
               <Route path="/api-keys" element={<UserAccessKeysPage />} />
               <Route path="/projects/:projectId" element={<DashboardPage />} />
               <Route path="/pricing" element={<PricingPage />} />
