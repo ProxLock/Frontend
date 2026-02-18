@@ -425,7 +425,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (loading || !project) return;
 
-    const isCreateKeyRoute = location.pathname.endsWith('/create-key');
+    const isCreateKeyRoute = projectId && location.pathname === `/projects/${projectId}/create-key`;
     const openModal = searchParams.get("openModal");
     
     if (openModal === "true" || isCreateKeyRoute) {
