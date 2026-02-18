@@ -491,7 +491,7 @@ export default function DashboardPage() {
     if (!projectId) return;
 
     // Check API Key Limit - strictly enforce in case of bypass
-    if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+    if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
       return;
     }
 
@@ -1278,15 +1278,15 @@ export default function DashboardPage() {
                 </button>
               )}
               <button
-                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
+                className={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit tooltip-right" : "btn-primary"}
                 onClick={() => {
-                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
                     return;
                   } else {
                     setShowAddKeyModal(true);
                   }
                 }}
-                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
               >
                 + Add Key
               </button>
@@ -1299,15 +1299,15 @@ export default function DashboardPage() {
               <h3>No API keys yet</h3>
               <p>Add your first API key to get started with secure proxy requests.</p>
               <button
-                className={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
+                className={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? "btn-solid btn-disabled-limit" : "btn-primary"}
                 onClick={() => {
-                  if (user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit) {
+                  if (user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit) {
                     return;
                   } else {
                     setShowAddKeyModal(true);
                   }
                 }}
-                data-tooltip={user?.apiKeyLimit !== undefined && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
+                data-tooltip={user?.apiKeyLimit !== undefined && user.apiKeyLimit > 0 && keys.length >= user.apiKeyLimit ? `You have reached your limit of ${user.apiKeyLimit} API keys per project. Upgrade plan to create more.` : undefined}
               >
                 Create Your First Key
               </button>
