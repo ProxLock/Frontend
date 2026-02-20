@@ -48,6 +48,43 @@ const API_DIRECTORY: Record<string, string[]> = {
   "nvidia-nims": ["integrate.api.nvidia.com"],
 };
 
+// Directory of popular APIs and their required authentication headers
+const API_HEADERS_DIRECTORY: Record<string, string[]> = {
+  openai: ["Authorization"],
+  "open ai": ["Authorization"],
+  "open-ai": ["Authorization"],
+  claude: ["x-api-key", "anthropic-version"],
+  anthropic: ["x-api-key", "anthropic-version"],
+  openrouter: ["Authorization"],
+  "open router": ["Authorization"],
+  "open-router": ["Authorization"],
+  groq: ["Authorization"],
+  mistral: ["Authorization"],
+  cohere: ["Authorization"],
+  together: ["Authorization"],
+  perplexity: ["Authorization"],
+  gemini: ["x-goog-api-key"],
+  google: ["x-goog-api-key"],
+  "google ai": ["x-goog-api-key"],
+  xai: ["Authorization"],
+  "x ai": ["Authorization"],
+  replicate: ["Authorization"],
+  stability: ["Authorization"],
+  "stability ai": ["Authorization"],
+  huggingface: ["Authorization"],
+  "hugging face": ["Authorization"],
+  "hugging-face": ["Authorization"],
+  aleph: ["Authorization"],
+  "aleph alpha": ["Authorization"],
+  "aleph-alpha": ["Authorization"],
+  ai21: ["Authorization"],
+  "ai21 labs": ["Authorization"],
+  "ai21-labs": ["Authorization"],
+  nvidia: ["Authorization"],
+  "nvidia nims": ["Authorization"],
+  "nvidia-nims": ["Authorization"],
+};
+
 const getWhitelistedUrlsFromName = (name: string): string[] => {
   if (!name) return [];
 
@@ -71,6 +108,32 @@ const getWhitelistedUrlsFromName = (name: string): string[] => {
       const nameParts = normalizedName.split(/[\s\-_]+/);
       if (nameParts.includes(key)) {
         return urls;
+      }
+    }
+  }
+
+  return [];
+};
+
+const getWhitelistedHeadersFromName = (name: string): string[] => {
+  if (!name) return [];
+
+  const normalizedName = name.toLowerCase().trim();
+
+  // Direct match
+  if (API_HEADERS_DIRECTORY[normalizedName]) {
+    return API_HEADERS_DIRECTORY[normalizedName];
+  }
+
+  // Partial match - only if input is at least 3 characters
+  if (normalizedName.length >= 3) {
+    for (const [key, headers] of Object.entries(API_HEADERS_DIRECTORY)) {
+      if (normalizedName.startsWith(key)) {
+        return headers;
+      }
+      const nameParts = normalizedName.split(/[\s\-_]+/);
+      if (nameParts.includes(key)) {
+        return headers;
       }
     }
   }
@@ -280,26 +343,31 @@ export default function DashboardPage() {
 
   const handleNameChange = (name: string, isEdit: boolean = false) => {
     const autoUrls = getWhitelistedUrlsFromName(name);
+    const autoHeaders = getWhitelistedHeadersFromName(name);
 
     if (isEdit) {
-      // If name is empty, clear whitelistedUrls
-      // If name matches an API, always update whitelistedUrls
+      // If name is empty, clear whitelistedUrls and whitelistedHeaders
+      // If name matches an API, always update whitelistedUrls and whitelistedHeaders
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : keyFormData.whitelistedUrls);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 ? autoHeaders : keyFormData.whitelistedHeaders);
 
       setKeyFormData({
         ...keyFormData,
         name,
         whitelistedUrls: newWhitelistedUrls,
+        whitelistedHeaders: newWhitelistedHeaders,
       });
     } else {
-      // If name is empty, clear whitelistedUrls
-      // If name matches an API, always update whitelistedUrls
+      // If name is empty, clear whitelistedUrls and whitelistedHeaders
+      // If name matches an API, always update whitelistedUrls and whitelistedHeaders
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : formData.whitelistedUrls);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 ? autoHeaders : formData.whitelistedHeaders);
 
       setFormData({
         ...formData,
         name,
         whitelistedUrls: newWhitelistedUrls,
+        whitelistedHeaders: newWhitelistedHeaders,
       });
     }
   };
