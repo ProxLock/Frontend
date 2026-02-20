@@ -1401,28 +1401,15 @@ export default function DashboardPage() {
   const handleApplyBulkWhitelistedHeaders = async () => {
     if (!projectId) return;
 
-    // Validate: show message if any keys still have no headers configured
-    const keysMissingHeaders = keys.filter(
-      (key) => key.id && (!key.whitelistedHeaders || key.whitelistedHeaders.length === 0) &&
-        (!bulkHeadersData[key.id] || bulkHeadersData[key.id].length === 0)
-    );
-
-    if (keysMissingHeaders.length > 0) {
-      const missingNames = keysMissingHeaders.map((key) => key.name || "Unnamed Key");
-      setErrorToast(
-        keysMissingHeaders.length === 1
-          ? `Please configure at least one header for: ${missingNames[0]}`
-          : `Please configure at least one header for: ${missingNames.join(", ")}`
-      );
-      return;
-    }
-
     // Only apply to keys that have at least one header configured
     const keysToUpdate = keys.filter(
       (key) => key.id && bulkHeadersData[key.id] && bulkHeadersData[key.id].length > 0
     );
 
-    if (keysToUpdate.length === 0) return;
+    if (keysToUpdate.length === 0) {
+      handleCloseBulkHeadersModal();
+      return;
+    }
 
     try {
       setApplyingBulkHeaders(true);
