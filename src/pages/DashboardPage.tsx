@@ -126,15 +126,34 @@ const getWhitelistedHeadersFromName = (name: string): string[] => {
   }
 
   // Partial match - only if input is at least 3 characters
+  // Use scoring to prefer more specific (longer) matches and avoid ambiguity
   if (normalizedName.length >= 3) {
+    const nameParts = normalizedName.split(/[\s\-_]+/);
+
+    let bestHeaders: string[] | null = null;
+    let bestScore = 0;
+    let ambiguous = false;
+
     for (const [key, headers] of Object.entries(API_HEADERS_DIRECTORY)) {
+      let score = 0;
+
       if (normalizedName.startsWith(key)) {
-        return headers;
+        score = key.length;
+      } else if (nameParts.includes(key)) {
+        score = key.length - 0.5;
       }
-      const nameParts = normalizedName.split(/[\s\-_]+/);
-      if (nameParts.includes(key)) {
-        return headers;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestHeaders = headers;
+        ambiguous = false;
+      } else if (score > 0 && score === bestScore) {
+        ambiguous = true;
       }
+    }
+
+    if (bestHeaders && !ambiguous) {
+      return bestHeaders;
     }
   }
 
@@ -314,7 +333,7 @@ export default function DashboardPage() {
     const cleanHeader = header.trim();
 
     if (isEdit) {
-      if (!keyFormData.whitelistedHeaders.includes(cleanHeader)) {
+      if (!keyFormData.whitelistedHeaders.some((h) => h.toLowerCase() === cleanHeader.toLowerCase())) {
         setKeyFormData({
           ...keyFormData,
           whitelistedHeaders: [...keyFormData.whitelistedHeaders, cleanHeader],
@@ -322,7 +341,7 @@ export default function DashboardPage() {
       }
       setNewWhitelistedHeaderEdit("");
     } else {
-      if (!formData.whitelistedHeaders.includes(cleanHeader)) {
+      if (!formData.whitelistedHeaders.some((h) => h.toLowerCase() === cleanHeader.toLowerCase())) {
         setFormData({
           ...formData,
           whitelistedHeaders: [...formData.whitelistedHeaders, cleanHeader],
@@ -352,9 +371,10 @@ export default function DashboardPage() {
 
     if (isEdit) {
       // If name is empty, clear whitelistedUrls and whitelistedHeaders
-      // If name matches an API, always update whitelistedUrls and whitelistedHeaders
+      // If name matches an API, always update whitelistedUrls
+      // Only auto-populate headers when the current list is empty to avoid overwriting manual customizations
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : keyFormData.whitelistedUrls);
-      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 ? autoHeaders : keyFormData.whitelistedHeaders);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 && keyFormData.whitelistedHeaders.length === 0 ? autoHeaders : keyFormData.whitelistedHeaders);
 
       setKeyFormData({
         ...keyFormData,
@@ -364,9 +384,10 @@ export default function DashboardPage() {
       });
     } else {
       // If name is empty, clear whitelistedUrls and whitelistedHeaders
-      // If name matches an API, always update whitelistedUrls and whitelistedHeaders
+      // If name matches an API, always update whitelistedUrls
+      // Only auto-populate headers when the current list is empty to avoid overwriting manual customizations
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : formData.whitelistedUrls);
-      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 ? autoHeaders : formData.whitelistedHeaders);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 && formData.whitelistedHeaders.length === 0 ? autoHeaders : formData.whitelistedHeaders);
 
       setFormData({
         ...formData,
@@ -1304,7 +1325,7 @@ export default function DashboardPage() {
               name: key.name || undefined,
               description: key.description,
               whitelistedUrls: key.whitelistedUrls,
-              whitelistedHeaders: key.whitelistedHeaders,
+              whitelistedHeaders: key.whitelistedHeaders || [],
               rateLimit,
             }),
           })
@@ -1366,7 +1387,7 @@ export default function DashboardPage() {
     const value = (bulkHeadersNewInputs[keyId] || "").trim();
     if (!value) return;
     const current = bulkHeadersData[keyId] || [];
-    if (!current.includes(value)) {
+    if (!current.some((h) => h.toLowerCase() === value.toLowerCase())) {
       setBulkHeadersData({ ...bulkHeadersData, [keyId]: [...current, value] });
     }
     setBulkHeadersNewInputs({ ...bulkHeadersNewInputs, [keyId]: "" });
@@ -1380,6 +1401,22 @@ export default function DashboardPage() {
   const handleApplyBulkWhitelistedHeaders = async () => {
     if (!projectId) return;
 
+    // Validate: show message if any keys still have no headers configured
+    const keysMissingHeaders = keys.filter(
+      (key) => key.id && (!key.whitelistedHeaders || key.whitelistedHeaders.length === 0) &&
+        (!bulkHeadersData[key.id] || bulkHeadersData[key.id].length === 0)
+    );
+
+    if (keysMissingHeaders.length > 0) {
+      const missingNames = keysMissingHeaders.map((key) => key.name || "Unnamed Key");
+      setErrorToast(
+        keysMissingHeaders.length === 1
+          ? `Please configure at least one header for: ${missingNames[0]}`
+          : `Please configure at least one header for: ${missingNames.join(", ")}`
+      );
+      return;
+    }
+
     // Only apply to keys that have at least one header configured
     const keysToUpdate = keys.filter(
       (key) => key.id && bulkHeadersData[key.id] && bulkHeadersData[key.id].length > 0
@@ -1391,7 +1428,7 @@ export default function DashboardPage() {
       setApplyingBulkHeaders(true);
       const token = await getToken({ template: "default" });
 
-      await Promise.all(
+      const results = await Promise.allSettled(
         keysToUpdate.map((key) =>
           fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
             method: "PUT",
@@ -1412,7 +1449,7 @@ export default function DashboardPage() {
         )
       );
 
-      // Refresh keys list
+      // Refresh keys list regardless of partial failures
       const keysRes = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
         method: "GET",
         headers: {
@@ -1427,7 +1464,12 @@ export default function DashboardPage() {
         setKeys(Array.isArray(keysData) ? keysData : []);
       }
 
-      handleCloseBulkHeadersModal();
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        setErrorToast(`Failed to update ${failures.length} of ${keysToUpdate.length} keys. Please try again.`);
+      } else {
+        handleCloseBulkHeadersModal();
+      }
     } catch (err) {
       console.error("Error applying bulk whitelisted headers:", err);
       setErrorToast((err as Error).message || "Failed to apply whitelisted headers. Please try again.");

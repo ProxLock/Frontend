@@ -33,7 +33,7 @@ export function parseKeyParams(searchParams: URLSearchParams): KeyParams {
     : [];
   const whitelistedHeadersParam = searchParams.get("whitelistedHeaders") || "";
   const whitelistedHeaders = whitelistedHeadersParam
-    ? whitelistedHeadersParam.split(",").map(header => header.trim()).filter(header => header.length > 0)
+    ? whitelistedHeadersParam.split(",").map(header => decodeURIComponent(header.trim())).filter(header => header.length > 0)
     : [];
   const rateLimitParam = searchParams.get("rateLimit");
   const rateLimit = rateLimitParam ? parseInt(rateLimitParam, 10) : -1;
@@ -64,7 +64,7 @@ export function buildKeyParamsUrl(params: Partial<KeyParams>): string {
     searchParams.set("whitelistedUrls", params.whitelistedUrls.join(","));
   }
   if (params.whitelistedHeaders && params.whitelistedHeaders.length > 0) {
-    searchParams.set("whitelistedHeaders", params.whitelistedHeaders.join(","));
+    searchParams.set("whitelistedHeaders", params.whitelistedHeaders.map(h => encodeURIComponent(h)).join(","));
   }
   // Only include rateLimit if it's >= 1 (not -1/unlimited and not 0)
   if (params.rateLimit !== undefined && params.rateLimit >= 1) {
