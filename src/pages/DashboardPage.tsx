@@ -1378,7 +1378,7 @@ export default function DashboardPage() {
                     <div className="header-warning-alert-text">
                       <strong>Security Warning: Missing Whitelisted Headers</strong>
                       <span>
-                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are required to prevent key exfiltration. Please update your keys to add whitelisted headers.
+                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are now required to prevent key exfiltration. Please update your keys to add whitelisted headers.
                       </span>
                     </div>
                   </div>
@@ -1866,7 +1866,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   <p className="form-hint">
-                    At least one header is required. Only requests containing these headers will be accepted. This prevents key exfiltration.
+                    At least one header is required. Only these headers in a request will be replaced with the API key. This prevents key exfiltration.
                   </p>
                   {formData.whitelistedHeaders.length > 0 && (
                     <div className="whitelisted-urls-list">
@@ -2164,7 +2164,7 @@ export default function DashboardPage() {
                     </button>
                   </div>
                   <p className="form-hint">
-                    At least one header is required. Only requests containing these headers will be accepted. This prevents key exfiltration.
+                    At least one header is required. Only these headers in a request will be replaced with the API key. This prevents key exfiltration.
                   </p>
                   {keyFormData.whitelistedHeaders.length > 0 && (
                     <div className="whitelisted-urls-list">
