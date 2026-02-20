@@ -1581,7 +1581,7 @@ export default function DashboardPage() {
                     <div className="header-warning-alert-text">
                       <strong>Security Warning: Missing Whitelisted Headers</strong>
                       <span>
-                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are required to prevent key exfiltration.
+                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are now required to prevent key exfiltration.
                       </span>
                     </div>
                     <button
