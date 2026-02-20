@@ -4522,6 +4522,11 @@ body {
   line-height: 1.4;
 }
 
+.header-warning-alert-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .key-detail-warning {
   color: #eab308;
   display: flex;

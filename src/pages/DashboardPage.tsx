@@ -243,6 +243,7 @@ export default function DashboardPage() {
   const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
   const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
   const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
+  const [applyingBulkHeaders, setApplyingBulkHeaders] = useState(false);
 
   // Play Integrity state
   const [playIntegrityConfig, setPlayIntegrityConfig] = useState<PlayIntegrityConfig | null>(null);
@@ -1330,6 +1331,68 @@ export default function DashboardPage() {
     }
   };
 
+  const handleApplyBulkWhitelistedHeaders = async () => {
+    if (!projectId || keys.length === 0) return;
+
+    // Find keys missing whitelisted headers
+    const keysMissingHeaders = keys.filter(
+      (key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0
+    );
+
+    if (keysMissingHeaders.length === 0) return;
+
+    try {
+      setApplyingBulkHeaders(true);
+      const token = await getToken({ template: "default" });
+
+      // Update only keys missing headers, auto-detecting from name
+      await Promise.all(
+        keysMissingHeaders.map((key) => {
+          const autoHeaders = getWhitelistedHeadersFromName(key.name || "");
+          // Only update if we can determine headers from the name
+          if (autoHeaders.length === 0) return Promise.resolve();
+
+          return fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              name: key.name || undefined,
+              description: key.description,
+              whitelistedUrls: key.whitelistedUrls,
+              whitelistedHeaders: autoHeaders,
+              rateLimit: key.rateLimit,
+              allowsWeb: key.allowsWeb,
+            }),
+          });
+        })
+      );
+
+      // Refresh keys list
+      const keysRes = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (keysRes.ok) {
+        const keysData = await keysRes.json();
+        setKeys(Array.isArray(keysData) ? keysData : []);
+      }
+    } catch (err) {
+      console.error("Error applying bulk whitelisted headers:", err);
+      setErrorToast((err as Error).message || "Failed to apply whitelisted headers. Please try again.");
+    } finally {
+      setApplyingBulkHeaders(false);
+    }
+  };
+
   if (isNotFound) {
     return <NotFoundPage />;
   }
@@ -1391,6 +1454,15 @@ export default function DashboardPage() {
           <div className="keys-header">
             <h2 className="section-title">API Keys</h2>
             <div className="keys-header-actions">
+              {keys.length > 0 && keys.some((key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0) && (
+                <button
+                  className="btn-secondary"
+                  onClick={handleApplyBulkWhitelistedHeaders}
+                  disabled={applyingBulkHeaders}
+                >
+                  {applyingBulkHeaders ? "Applying..." : "Auto-Add Headers to All"}
+                </button>
+              )}
               {keys.length > 0 && (
                 <button className="btn-secondary" onClick={() => setShowBulkRateLimitModal(true)}>
                   Set Rate Limit for All
@@ -1446,9 +1518,16 @@ export default function DashboardPage() {
                     <div className="header-warning-alert-text">
                       <strong>Security Warning: Missing Whitelisted Headers</strong>
                       <span>
-                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are now required to prevent key exfiltration. Please update your keys to add whitelisted headers.
+                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are required to prevent key exfiltration.
                       </span>
                     </div>
+                    <button
+                      className="btn-secondary btn-small header-warning-alert-btn"
+                      onClick={handleApplyBulkWhitelistedHeaders}
+                      disabled={applyingBulkHeaders}
+                    >
+                      {applyingBulkHeaders ? "Applying..." : "Auto-Fix"}
+                    </button>
                   </div>
                 </div>
               )}
