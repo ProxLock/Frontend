@@ -243,6 +243,10 @@ export default function DashboardPage() {
   const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
   const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
   const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
+  const [showBulkHeadersModal, setShowBulkHeadersModal] = useState(false);
+  const [isClosingBulkHeadersModal, setIsClosingBulkHeadersModal] = useState(false);
+  const [bulkHeadersData, setBulkHeadersData] = useState<Record<string, string[]>>({});
+  const [bulkHeadersNewInputs, setBulkHeadersNewInputs] = useState<Record<string, string>>({});
   const [applyingBulkHeaders, setApplyingBulkHeaders] = useState(false);
 
   // Play Integrity state
@@ -1331,28 +1335,65 @@ export default function DashboardPage() {
     }
   };
 
-  const handleApplyBulkWhitelistedHeaders = async () => {
-    if (!projectId || keys.length === 0) return;
-
-    // Find keys missing whitelisted headers
+  const handleOpenBulkHeadersModal = () => {
+    // Initialize form data for all keys missing headers
     const keysMissingHeaders = keys.filter(
       (key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0
     );
+    const initialData: Record<string, string[]> = {};
+    const initialInputs: Record<string, string> = {};
+    keysMissingHeaders.forEach((key) => {
+      const autoHeaders = getWhitelistedHeadersFromName(key.name || "");
+      initialData[key.id || ""] = autoHeaders;
+      initialInputs[key.id || ""] = "";
+    });
+    setBulkHeadersData(initialData);
+    setBulkHeadersNewInputs(initialInputs);
+    setShowBulkHeadersModal(true);
+  };
 
-    if (keysMissingHeaders.length === 0) return;
+  const handleCloseBulkHeadersModal = () => {
+    setIsClosingBulkHeadersModal(true);
+    setTimeout(() => {
+      setShowBulkHeadersModal(false);
+      setIsClosingBulkHeadersModal(false);
+      setBulkHeadersData({});
+      setBulkHeadersNewInputs({});
+    }, 300);
+  };
+
+  const handleBulkHeaderAdd = (keyId: string) => {
+    const value = (bulkHeadersNewInputs[keyId] || "").trim();
+    if (!value) return;
+    const current = bulkHeadersData[keyId] || [];
+    if (!current.includes(value)) {
+      setBulkHeadersData({ ...bulkHeadersData, [keyId]: [...current, value] });
+    }
+    setBulkHeadersNewInputs({ ...bulkHeadersNewInputs, [keyId]: "" });
+  };
+
+  const handleBulkHeaderRemove = (keyId: string, header: string) => {
+    const current = bulkHeadersData[keyId] || [];
+    setBulkHeadersData({ ...bulkHeadersData, [keyId]: current.filter((h) => h !== header) });
+  };
+
+  const handleApplyBulkWhitelistedHeaders = async () => {
+    if (!projectId) return;
+
+    // Only apply to keys that have at least one header configured
+    const keysToUpdate = keys.filter(
+      (key) => key.id && bulkHeadersData[key.id] && bulkHeadersData[key.id].length > 0
+    );
+
+    if (keysToUpdate.length === 0) return;
 
     try {
       setApplyingBulkHeaders(true);
       const token = await getToken({ template: "default" });
 
-      // Update only keys missing headers, auto-detecting from name
       await Promise.all(
-        keysMissingHeaders.map((key) => {
-          const autoHeaders = getWhitelistedHeadersFromName(key.name || "");
-          // Only update if we can determine headers from the name
-          if (autoHeaders.length === 0) return Promise.resolve();
-
-          return fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+        keysToUpdate.map((key) =>
+          fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
             method: "PUT",
             headers: {
               Authorization: `Bearer ${token}`,
@@ -1363,12 +1404,12 @@ export default function DashboardPage() {
               name: key.name || undefined,
               description: key.description,
               whitelistedUrls: key.whitelistedUrls,
-              whitelistedHeaders: autoHeaders,
+              whitelistedHeaders: bulkHeadersData[key.id || ""],
               rateLimit: key.rateLimit,
               allowsWeb: key.allowsWeb,
             }),
-          });
-        })
+          })
+        )
       );
 
       // Refresh keys list
@@ -1385,6 +1426,8 @@ export default function DashboardPage() {
         const keysData = await keysRes.json();
         setKeys(Array.isArray(keysData) ? keysData : []);
       }
+
+      handleCloseBulkHeadersModal();
     } catch (err) {
       console.error("Error applying bulk whitelisted headers:", err);
       setErrorToast((err as Error).message || "Failed to apply whitelisted headers. Please try again.");
@@ -1454,15 +1497,6 @@ export default function DashboardPage() {
           <div className="keys-header">
             <h2 className="section-title">API Keys</h2>
             <div className="keys-header-actions">
-              {keys.length > 0 && keys.some((key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0) && (
-                <button
-                  className="btn-secondary"
-                  onClick={handleApplyBulkWhitelistedHeaders}
-                  disabled={applyingBulkHeaders}
-                >
-                  {applyingBulkHeaders ? "Applying..." : "Auto-Add Headers to All"}
-                </button>
-              )}
               {keys.length > 0 && (
                 <button className="btn-secondary" onClick={() => setShowBulkRateLimitModal(true)}>
                   Set Rate Limit for All
@@ -1523,10 +1557,9 @@ export default function DashboardPage() {
                     </div>
                     <button
                       className="btn-secondary btn-small header-warning-alert-btn"
-                      onClick={handleApplyBulkWhitelistedHeaders}
-                      disabled={applyingBulkHeaders}
+                      onClick={handleOpenBulkHeadersModal}
                     >
-                      {applyingBulkHeaders ? "Applying..." : "Auto-Fix"}
+                      Fix
                     </button>
                   </div>
                 </div>
@@ -2755,6 +2788,105 @@ export default function DashboardPage() {
                     disabled={applyingBulkRateLimit}
                   >
                     {applyingBulkRateLimit ? "Applying..." : "Apply to All Keys"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Bulk Whitelisted Headers Modal */}
+      {
+        showBulkHeadersModal && (
+          <div className={`modal-overlay ${isClosingBulkHeadersModal ? 'closing' : ''}`} onClick={handleCloseBulkHeadersModal}>
+            <div className={`modal-content modal-content-wide ${isClosingBulkHeadersModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Fix Missing Whitelisted Headers</h2>
+                <button
+                  className="modal-close-btn"
+                  onClick={handleCloseBulkHeadersModal}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="modal-form">
+                <p className="form-description">
+                  Configure whitelisted headers for each key below. Headers have been auto-detected where possible based on the key name.
+                </p>
+                <div className="bulk-headers-list">
+                  {keys.filter((key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0).map((key) => (
+                    <div key={key.id} className="bulk-headers-key-row">
+                      <div className="bulk-headers-key-name">
+                        <strong>{key.name || "Unnamed Key"}</strong>
+                      </div>
+                      <div className="bulk-headers-key-inputs">
+                        <div className="whitelisted-urls-input-group">
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={bulkHeadersNewInputs[key.id || ""] || ""}
+                            onChange={(e) => setBulkHeadersNewInputs({ ...bulkHeadersNewInputs, [key.id || ""]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleBulkHeaderAdd(key.id || "");
+                              }
+                            }}
+                            placeholder="e.g., Authorization"
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary btn-small"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleBulkHeaderAdd(key.id || "");
+                            }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                        {(bulkHeadersData[key.id || ""] || []).length > 0 && (
+                          <div className="whitelisted-urls-list">
+                            {(bulkHeadersData[key.id || ""] || []).map((header, index) => (
+                              <div key={index} className="whitelisted-url-item">
+                                <code className="whitelisted-url-value">{header}</code>
+                                <button
+                                  type="button"
+                                  className="whitelisted-url-remove"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleBulkHeaderRemove(key.id || "", header);
+                                  }}
+                                  title="Remove header"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCloseBulkHeadersModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleApplyBulkWhitelistedHeaders}
+                    disabled={applyingBulkHeaders}
+                  >
+                    {applyingBulkHeaders ? "Applying..." : "Apply Headers"}
                   </button>
                 </div>
               </div>

@@ -4527,6 +4527,40 @@ body {
   white-space: nowrap;
 }
 
+.modal-content-wide {
+  max-width: 700px;
+}
+
+.bulk-headers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.bulk-headers-key-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background: var(--bg-code);
+  border: 1px solid var(--badge-border);
+  border-radius: 0.5rem;
+}
+
+.bulk-headers-key-name {
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+}
+
+.bulk-headers-key-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .key-detail-warning {
   color: #eab308;
   display: flex;
