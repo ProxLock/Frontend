@@ -1416,8 +1416,8 @@ export default function DashboardPage() {
       const token = await getToken({ template: "default" });
 
       const results = await Promise.allSettled(
-        keysToUpdate.map((key) =>
-          fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+        keysToUpdate.map(async (key) => {
+          const res = await fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
             method: "PUT",
             headers: {
               Authorization: `Bearer ${token}`,
@@ -1432,8 +1432,12 @@ export default function DashboardPage() {
               rateLimit: key.rateLimit,
               allowsWeb: key.allowsWeb,
             }),
-          })
-        )
+          });
+          if (!res.ok) {
+            throw new Error(`Failed to update key: ${res.statusText}`);
+          }
+          return res;
+        })
       );
 
       // Refresh keys list regardless of partial failures
