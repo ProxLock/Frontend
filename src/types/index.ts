@@ -6,8 +6,10 @@ export interface Project {
 }
 
 export interface UserAccessKey {
-  key: string;
+  id: string;
   name: string;
+  key?: string;
+  displayPrefix?: string;
 }
 
 export interface User {
