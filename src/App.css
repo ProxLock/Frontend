@@ -4968,6 +4968,9 @@ body {
 .api-key-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .api-key-value {
@@ -4980,7 +4983,8 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .api-key-value code {
@@ -4994,6 +4998,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .api-key-copy-btn {
@@ -5141,13 +5146,18 @@ body {
     align-items: stretch;
   }
 
+  .api-key-info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .api-key-value {
     flex-direction: column;
     align-items: stretch;
   }
 
   .api-key-value code {
-    text-align: center;
+    text-align: left;
   }
 
   .api-key-copy-btn {

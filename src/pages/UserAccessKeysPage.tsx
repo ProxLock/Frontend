@@ -59,10 +59,8 @@ export default function UserAccessKeysPage() {
             const userData = await res.json();
             setAccessKeyLimit(userData.accessKeyLimit ?? 0);
 
-            // Access keys come from the /me endpoint as an array of objects with key and name
-            const keys: UserAccessKey[] = (userData.accessKeys || []).map((accessKey: UserAccessKey | string) =>
-                typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
-            );
+            // Access keys come from the /me endpoint as an array of objects
+            const keys: UserAccessKey[] = userData.accessKeys || [];
             setAccessKeys(keys);
         } catch (err) {
             setError((err as Error).message);
@@ -87,9 +85,7 @@ export default function UserAccessKeysPage() {
 
             if (res.ok) {
                 const userData = await res.json();
-                const keys: UserAccessKey[] = (userData.accessKeys || []).map((accessKey: UserAccessKey | string) =>
-                    typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
-                );
+                const keys: UserAccessKey[] = userData.accessKeys || [];
                 setAccessKeys(keys);
             }
         } catch (err) {
@@ -147,7 +143,7 @@ export default function UserAccessKeysPage() {
         }, 300);
     };
 
-    const handleDeleteKey = async (key: string) => {
+    const handleDeleteKey = async (id: string) => {
         if (!confirm("Are you sure you want to delete this access key? This action cannot be undone.")) {
             return;
         }
@@ -162,7 +158,7 @@ export default function UserAccessKeysPage() {
                     "Content-Type": "application/json; charset=utf-8",
                 },
                 credentials: "include",
-                body: JSON.stringify({ key }),
+                body: JSON.stringify({ id }),
             });
 
             if (!res.ok) {
@@ -198,10 +194,11 @@ export default function UserAccessKeysPage() {
         }, 300);
     };
 
-    // Mask the key for display (show first 6 characters only)
-    const maskKey = (key: string): string => {
-        if (key.length <= 6) return key;
-        return `${key.slice(0, 6)}${'•'.repeat(Math.min(24, key.length - 6))}`;
+    // Format the display prefix with redacted remaining characters (key is 28 chars total)
+    const formatDisplayKey = (displayPrefix?: string): string => {
+        if (!displayPrefix) return '•'.repeat(28);
+        const remaining = Math.max(0, 28 - displayPrefix.length);
+        return `${displayPrefix}${'•'.repeat(remaining)}`;
     };
 
     return (
@@ -288,35 +285,19 @@ export default function UserAccessKeysPage() {
                             )}
                         </div>
                         <div className="api-keys-list">
-                            {accessKeys.map((accessKey, index) => (
-                                <div key={index} className="api-key-card">
+                            {accessKeys.map((accessKey) => (
+                                <div key={accessKey.id} className="api-key-card">
                                     <div className="api-key-info">
                                         {accessKey.name && (
                                             <div className="api-key-name">{accessKey.name}</div>
                                         )}
                                         <div className="api-key-value">
-                                            <code>{maskKey(accessKey.key)}</code>
-                                            <button
-                                                className="api-key-copy-btn"
-                                                onClick={() => handleCopyToClipboard(accessKey.key, `key-${index}`)}
-                                                title="Copy full key"
-                                            >
-                                                {copiedButtonId === `key-${index}` ? (
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M13.5 4.5L6 12L2.5 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-                                                        <path d="M11 5V3.5C11 2.67157 10.3284 2 9.5 2H3.5C2.67157 2 2 2.67157 2 3.5V9.5C2 10.3284 2.67157 11 3.5 11H5" stroke="currentColor" strokeWidth="1.5" />
-                                                    </svg>
-                                                )}
-                                            </button>
+                                            <code>{formatDisplayKey(accessKey.displayPrefix)}</code>
                                         </div>
                                     </div>
                                     <button
                                         className="api-key-delete-btn"
-                                        onClick={() => handleDeleteKey(accessKey.key)}
+                                        onClick={() => handleDeleteKey(accessKey.id)}
                                         title="Delete access key"
                                     >
                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -396,7 +377,7 @@ export default function UserAccessKeysPage() {
                                 <span>Your access key has been created successfully!</span>
                             </div>
                             <p className="modal-description">
-                                You can copy this key anytime from your dashboard.
+                                Make sure to copy your key now. You won't be able to see it again!
                             </p>
                             <div className="new-key-display">
                                 <code>{newKey}</code>
