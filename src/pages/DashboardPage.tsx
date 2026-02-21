@@ -48,6 +48,43 @@ const API_DIRECTORY: Record<string, string[]> = {
   "nvidia-nims": ["integrate.api.nvidia.com"],
 };
 
+// Directory of popular APIs and their required authentication headers
+const API_HEADERS_DIRECTORY: Record<string, string[]> = {
+  openai: ["Authorization"],
+  "open ai": ["Authorization"],
+  "open-ai": ["Authorization"],
+  claude: ["x-api-key", "anthropic-version"],
+  anthropic: ["x-api-key", "anthropic-version"],
+  openrouter: ["Authorization"],
+  "open router": ["Authorization"],
+  "open-router": ["Authorization"],
+  groq: ["Authorization"],
+  mistral: ["Authorization"],
+  cohere: ["Authorization"],
+  together: ["Authorization"],
+  perplexity: ["Authorization"],
+  gemini: ["x-goog-api-key"],
+  google: ["x-goog-api-key"],
+  "google ai": ["x-goog-api-key"],
+  xai: ["Authorization"],
+  "x ai": ["Authorization"],
+  replicate: ["Authorization"],
+  stability: ["Authorization"],
+  "stability ai": ["Authorization"],
+  huggingface: ["Authorization"],
+  "hugging face": ["Authorization"],
+  "hugging-face": ["Authorization"],
+  aleph: ["Authorization"],
+  "aleph alpha": ["Authorization"],
+  "aleph-alpha": ["Authorization"],
+  ai21: ["Authorization"],
+  "ai21 labs": ["Authorization"],
+  "ai21-labs": ["Authorization"],
+  nvidia: ["Authorization"],
+  "nvidia nims": ["Authorization"],
+  "nvidia-nims": ["Authorization"],
+};
+
 const getWhitelistedUrlsFromName = (name: string): string[] => {
   if (!name) return [];
 
@@ -78,6 +115,51 @@ const getWhitelistedUrlsFromName = (name: string): string[] => {
   return [];
 };
 
+const getWhitelistedHeadersFromName = (name: string): string[] => {
+  if (!name) return [];
+
+  const normalizedName = name.toLowerCase().trim();
+
+  // Direct match
+  if (API_HEADERS_DIRECTORY[normalizedName]) {
+    return API_HEADERS_DIRECTORY[normalizedName];
+  }
+
+  // Partial match - only if input is at least 3 characters
+  // Use scoring to prefer more specific (longer) matches and avoid ambiguity
+  if (normalizedName.length >= 3) {
+    const nameParts = normalizedName.split(/[\s\-_]+/);
+
+    let bestHeaders: string[] | null = null;
+    let bestScore = 0;
+    let ambiguous = false;
+
+    for (const [key, headers] of Object.entries(API_HEADERS_DIRECTORY)) {
+      let score = 0;
+
+      if (normalizedName.startsWith(key)) {
+        score = key.length;
+      } else if (nameParts.includes(key)) {
+        score = key.length - 0.5;
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestHeaders = headers;
+        ambiguous = false;
+      } else if (score > 0 && score === bestScore) {
+        ambiguous = true;
+      }
+    }
+
+    if (bestHeaders && !ambiguous) {
+      return bestHeaders;
+    }
+  }
+
+  return [];
+};
+
 interface APIKey {
   id?: string;
   name?: string;
@@ -85,6 +167,7 @@ interface APIKey {
   partialKey?: string;
   associationId?: string;
   whitelistedUrls?: string[];
+  whitelistedHeaders?: string[];
   rateLimit?: number | null;
   allowsWeb?: boolean;
 }
@@ -134,6 +217,7 @@ export default function DashboardPage() {
     description: "",
     apiKey: "",
     whitelistedUrls: [] as string[],
+    whitelistedHeaders: [] as string[],
     rateLimit: -1 as number,
     allowsWeb: false,
   });
@@ -145,6 +229,7 @@ export default function DashboardPage() {
     name: "",
     description: "",
     whitelistedUrls: [] as string[],
+    whitelistedHeaders: [] as string[],
     rateLimit: -1 as number,
     allowsWeb: false,
   });
@@ -169,12 +254,19 @@ export default function DashboardPage() {
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const [newWhitelistedUrl, setNewWhitelistedUrl] = useState("");
   const [newWhitelistedUrlEdit, setNewWhitelistedUrlEdit] = useState("");
+  const [newWhitelistedHeader, setNewWhitelistedHeader] = useState("");
+  const [newWhitelistedHeaderEdit, setNewWhitelistedHeaderEdit] = useState("");
   const [copiedButtonId, setCopiedButtonId] = useState<string | null>(null);
   const [showBulkRateLimitModal, setShowBulkRateLimitModal] = useState(false);
   const [isClosingBulkRateLimitModal, setIsClosingBulkRateLimitModal] = useState(false);
   const [bulkRateLimitEnabled, setBulkRateLimitEnabled] = useState(false);
   const [bulkRateLimitValue, setBulkRateLimitValue] = useState(60);
   const [applyingBulkRateLimit, setApplyingBulkRateLimit] = useState(false);
+  const [showBulkHeadersModal, setShowBulkHeadersModal] = useState(false);
+  const [isClosingBulkHeadersModal, setIsClosingBulkHeadersModal] = useState(false);
+  const [bulkHeadersData, setBulkHeadersData] = useState<Record<string, string[]>>({});
+  const [bulkHeadersNewInputs, setBulkHeadersNewInputs] = useState<Record<string, string>>({});
+  const [applyingBulkHeaders, setApplyingBulkHeaders] = useState(false);
 
   // Play Integrity state
   const [playIntegrityConfig, setPlayIntegrityConfig] = useState<PlayIntegrityConfig | null>(null);
@@ -234,28 +326,74 @@ export default function DashboardPage() {
     }
   };
 
-  const handleNameChange = (name: string, isEdit: boolean = false) => {
-    const autoUrls = getWhitelistedUrlsFromName(name);
+  const handleAddWhitelistedHeader = (isEdit: boolean = false) => {
+    const header = isEdit ? newWhitelistedHeaderEdit : newWhitelistedHeader;
+    if (!header.trim()) return;
+
+    const cleanHeader = header.trim();
 
     if (isEdit) {
-      // If name is empty, clear whitelistedUrls
+      if (!keyFormData.whitelistedHeaders.some((h) => h.toLowerCase() === cleanHeader.toLowerCase())) {
+        setKeyFormData({
+          ...keyFormData,
+          whitelistedHeaders: [...keyFormData.whitelistedHeaders, cleanHeader],
+        });
+      }
+      setNewWhitelistedHeaderEdit("");
+    } else {
+      if (!formData.whitelistedHeaders.some((h) => h.toLowerCase() === cleanHeader.toLowerCase())) {
+        setFormData({
+          ...formData,
+          whitelistedHeaders: [...formData.whitelistedHeaders, cleanHeader],
+        });
+      }
+      setNewWhitelistedHeader("");
+    }
+  };
+
+  const handleRemoveWhitelistedHeader = (header: string, isEdit: boolean = false) => {
+    if (isEdit) {
+      setKeyFormData({
+        ...keyFormData,
+        whitelistedHeaders: keyFormData.whitelistedHeaders.filter((h) => h !== header),
+      });
+    } else {
+      setFormData({
+        ...formData,
+        whitelistedHeaders: formData.whitelistedHeaders.filter((h) => h !== header),
+      });
+    }
+  };
+
+  const handleNameChange = (name: string, isEdit: boolean = false) => {
+    const autoUrls = getWhitelistedUrlsFromName(name);
+    const autoHeaders = getWhitelistedHeadersFromName(name);
+
+    if (isEdit) {
+      // If name is empty, clear whitelistedUrls and whitelistedHeaders
       // If name matches an API, always update whitelistedUrls
+      // Only auto-populate headers when the current list is empty to avoid overwriting manual customizations
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : keyFormData.whitelistedUrls);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 && keyFormData.whitelistedHeaders.length === 0 ? autoHeaders : keyFormData.whitelistedHeaders);
 
       setKeyFormData({
         ...keyFormData,
         name,
         whitelistedUrls: newWhitelistedUrls,
+        whitelistedHeaders: newWhitelistedHeaders,
       });
     } else {
-      // If name is empty, clear whitelistedUrls
+      // If name is empty, clear whitelistedUrls and whitelistedHeaders
       // If name matches an API, always update whitelistedUrls
+      // Only auto-populate headers when the current list is empty to avoid overwriting manual customizations
       const newWhitelistedUrls = !name.trim() ? [] : (autoUrls.length > 0 ? autoUrls : formData.whitelistedUrls);
+      const newWhitelistedHeaders = !name.trim() ? [] : (autoHeaders.length > 0 && formData.whitelistedHeaders.length === 0 ? autoHeaders : formData.whitelistedHeaders);
 
       setFormData({
         ...formData,
         name,
         whitelistedUrls: newWhitelistedUrls,
+        whitelistedHeaders: newWhitelistedHeaders,
       });
     }
   };
@@ -444,6 +582,7 @@ export default function DashboardPage() {
         description: keyParams.description,
         apiKey: keyParams.key,
         whitelistedUrls: keyParams.whitelistedUrls,
+        whitelistedHeaders: keyParams.whitelistedHeaders,
         rateLimit: keyParams.rateLimit,
         allowsWeb: keyParams.allowsWeb,
       });
@@ -511,6 +650,7 @@ export default function DashboardPage() {
           description: formData.description || undefined,
           apiKey: formData.apiKey || undefined,
           whitelistedUrls: formData.whitelistedUrls,
+          whitelistedHeaders: formData.whitelistedHeaders,
           rateLimit: formData.rateLimit,
           allowsWeb: formData.allowsWeb,
         }),
@@ -529,11 +669,11 @@ export default function DashboardPage() {
         setShowPartialKey(true);
         setShowAddKeyModal(false);
         // Reset form
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], whitelistedHeaders: [], rateLimit: -1, allowsWeb: false });
       } else {
         // If no partial key returned, just close modal and refresh
         setShowAddKeyModal(false);
-        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
+        setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], whitelistedHeaders: [], rateLimit: -1, allowsWeb: false });
       }
 
       // Refresh keys list
@@ -586,8 +726,9 @@ export default function DashboardPage() {
     setTimeout(() => {
       setShowAddKeyModal(false);
       setIsClosingModal(false);
-      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
+      setFormData({ name: "", description: "", apiKey: "", whitelistedUrls: [], whitelistedHeaders: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrl("");
+      setNewWhitelistedHeader("");
     }, 300);
   };
 
@@ -664,6 +805,7 @@ export default function DashboardPage() {
         name: key.name || "",
         description: key.description || "",
         whitelistedUrls: key.whitelistedUrls || [],
+        whitelistedHeaders: key.whitelistedHeaders || [],
         rateLimit: key.rateLimit ?? -1,
         allowsWeb: key.allowsWeb ?? false,
       });
@@ -677,8 +819,9 @@ export default function DashboardPage() {
       setShowEditKeyModal(false);
       setIsClosingEditKeyModal(false);
       setEditingKeyId(null);
-      setKeyFormData({ name: "", description: "", whitelistedUrls: [], rateLimit: -1, allowsWeb: false });
+      setKeyFormData({ name: "", description: "", whitelistedUrls: [], whitelistedHeaders: [], rateLimit: -1, allowsWeb: false });
       setNewWhitelistedUrlEdit("");
+      setNewWhitelistedHeaderEdit("");
     }, 300);
   };
 
@@ -701,6 +844,7 @@ export default function DashboardPage() {
           name: keyFormData.name || undefined,
           description: keyFormData.description,
           whitelistedUrls: keyFormData.whitelistedUrls,
+          whitelistedHeaders: keyFormData.whitelistedHeaders,
           rateLimit: keyFormData.rateLimit,
           allowsWeb: keyFormData.allowsWeb,
         }),
@@ -1181,6 +1325,7 @@ export default function DashboardPage() {
               name: key.name || undefined,
               description: key.description,
               whitelistedUrls: key.whitelistedUrls,
+              whitelistedHeaders: key.whitelistedHeaders || [],
               rateLimit,
             }),
           })
@@ -1208,6 +1353,119 @@ export default function DashboardPage() {
       setErrorToast((err as Error).message || "Failed to apply rate limit. Please try again.");
     } finally {
       setApplyingBulkRateLimit(false);
+    }
+  };
+
+  const handleOpenBulkHeadersModal = () => {
+    // Initialize form data for all keys missing headers
+    const keysMissingHeaders = keys.filter(
+      (key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0
+    );
+    const initialData: Record<string, string[]> = {};
+    const initialInputs: Record<string, string> = {};
+    keysMissingHeaders.forEach((key) => {
+      const autoHeaders = getWhitelistedHeadersFromName(key.name || "");
+      initialData[key.id || ""] = autoHeaders;
+      initialInputs[key.id || ""] = "";
+    });
+    setBulkHeadersData(initialData);
+    setBulkHeadersNewInputs(initialInputs);
+    setShowBulkHeadersModal(true);
+  };
+
+  const handleCloseBulkHeadersModal = () => {
+    setIsClosingBulkHeadersModal(true);
+    setTimeout(() => {
+      setShowBulkHeadersModal(false);
+      setIsClosingBulkHeadersModal(false);
+      setBulkHeadersData({});
+      setBulkHeadersNewInputs({});
+    }, 300);
+  };
+
+  const handleBulkHeaderAdd = (keyId: string) => {
+    const value = (bulkHeadersNewInputs[keyId] || "").trim();
+    if (!value) return;
+    const current = bulkHeadersData[keyId] || [];
+    if (!current.some((h) => h.toLowerCase() === value.toLowerCase())) {
+      setBulkHeadersData({ ...bulkHeadersData, [keyId]: [...current, value] });
+    }
+    setBulkHeadersNewInputs({ ...bulkHeadersNewInputs, [keyId]: "" });
+  };
+
+  const handleBulkHeaderRemove = (keyId: string, header: string) => {
+    const current = bulkHeadersData[keyId] || [];
+    setBulkHeadersData({ ...bulkHeadersData, [keyId]: current.filter((h) => h !== header) });
+  };
+
+  const handleApplyBulkWhitelistedHeaders = async () => {
+    if (!projectId) return;
+
+    // Only apply to keys that have at least one header configured
+    const keysToUpdate = keys.filter(
+      (key) => key.id && bulkHeadersData[key.id] && bulkHeadersData[key.id].length > 0
+    );
+
+    if (keysToUpdate.length === 0) {
+      handleCloseBulkHeadersModal();
+      return;
+    }
+
+    try {
+      setApplyingBulkHeaders(true);
+      const token = await getToken({ template: "default" });
+
+      const results = await Promise.allSettled(
+        keysToUpdate.map(async (key) => {
+          const res = await fetch(`${API_URL}/me/projects/${projectId}/keys/${key.id}`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json; charset=utf-8",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              name: key.name || undefined,
+              description: key.description,
+              whitelistedUrls: key.whitelistedUrls,
+              whitelistedHeaders: bulkHeadersData[key.id || ""],
+              rateLimit: key.rateLimit,
+              allowsWeb: key.allowsWeb,
+            }),
+          });
+          if (!res.ok) {
+            throw new Error(`Failed to update key: ${res.statusText}`);
+          }
+          return res;
+        })
+      );
+
+      // Refresh keys list regardless of partial failures
+      const keysRes = await fetch(`${API_URL}/me/projects/${projectId}/keys`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        credentials: "include",
+      });
+
+      if (keysRes.ok) {
+        const keysData = await keysRes.json();
+        setKeys(Array.isArray(keysData) ? keysData : []);
+      }
+
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        setErrorToast(`Failed to update ${failures.length} of ${keysToUpdate.length} keys. Please try again.`);
+      } else {
+        handleCloseBulkHeadersModal();
+      }
+    } catch (err) {
+      console.error("Error applying bulk whitelisted headers:", err);
+      setErrorToast((err as Error).message || "Failed to apply whitelisted headers. Please try again.");
+    } finally {
+      setApplyingBulkHeaders(false);
     }
   };
 
@@ -1313,6 +1571,32 @@ export default function DashboardPage() {
               </button>
             </div>
           ) : (
+            <>
+              {keys.some((key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0) && (
+                <div className="header-warning-alert">
+                  <div className="header-warning-alert-content">
+                    <div className="header-warning-alert-icon">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2L18 17H2L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M10 8V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                        <circle cx="10" cy="14" r="0.75" fill="currentColor" />
+                      </svg>
+                    </div>
+                    <div className="header-warning-alert-text">
+                      <strong>Security Warning: Missing Whitelisted Headers</strong>
+                      <span>
+                        One or more keys in this project do not have whitelisted headers configured. Whitelisted headers are now required to prevent key exfiltration.
+                      </span>
+                    </div>
+                    <button
+                      className="btn-secondary btn-small header-warning-alert-btn"
+                      onClick={handleOpenBulkHeadersModal}
+                    >
+                      Fix
+                    </button>
+                  </div>
+                </div>
+              )}
             <div className="keys-grid">
               {keys.map((key) => (
                 <div key={key.id} className="key-card">
@@ -1417,6 +1701,30 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
+                    {key.whitelistedHeaders && key.whitelistedHeaders.length > 0 ? (
+                      <div className="key-detail-row">
+                        <span className="key-detail-label">Whitelisted Headers:</span>
+                        <div className="whitelisted-urls-list">
+                          {key.whitelistedHeaders.map((header, index) => (
+                            <div key={index} className="whitelisted-url-item">
+                              <code className="whitelisted-url-value">{header}</code>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="key-detail-row">
+                        <span className="key-detail-label">Whitelisted Headers:</span>
+                        <span className="key-detail-value key-detail-warning">
+                          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M8 6V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+                          </svg>
+                          None configured
+                        </span>
+                      </div>
+                    )}
                     <div className="key-detail-row">
                       <span className="key-detail-label">Rate Limit:</span>
                       <span className="key-detail-value">
@@ -1427,6 +1735,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+            </>
           )}
         </div>
 
@@ -1740,6 +2049,62 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="form-group">
+                  <label htmlFor="key-whitelisted-headers" className="form-label">
+                    Whitelisted Headers <span className="required">*</span>
+                  </label>
+                  <div className="whitelisted-urls-input-group">
+                    <input
+                      type="text"
+                      id="key-whitelisted-headers"
+                      className="form-input"
+                      value={newWhitelistedHeader}
+                      onChange={(e) => setNewWhitelistedHeader(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddWhitelistedHeader(false);
+                        }
+                      }}
+                      placeholder="e.g., Authorization or X-Custom-Header"
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary btn-small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleAddWhitelistedHeader(false);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p className="form-hint">
+                    At least one header is required. Only these headers in a request will be replaced with the API key. This prevents key exfiltration.
+                  </p>
+                  {formData.whitelistedHeaders.length > 0 && (
+                    <div className="whitelisted-urls-list">
+                      {formData.whitelistedHeaders.map((header, index) => (
+                        <div key={index} className="whitelisted-url-item">
+                          <code className="whitelisted-url-value">{header}</code>
+                          <button
+                            type="button"
+                            className="whitelisted-url-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemoveWhitelistedHeader(header, false);
+                            }}
+                            title="Remove header"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
                   <label className="form-label">
                     Rate Limit (optional)
                   </label>
@@ -1815,7 +2180,7 @@ export default function DashboardPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary" disabled={submitting || !formData.apiKey || formData.whitelistedUrls.length === 0}>
+                  <button type="submit" className="btn-primary" disabled={submitting || !formData.apiKey || formData.whitelistedUrls.length === 0 || formData.whitelistedHeaders.length === 0}>
                     {submitting ? "Creating..." : "Create Key"}
                   </button>
                 </div>
@@ -1982,6 +2347,62 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="form-group">
+                  <label htmlFor="key-edit-whitelisted-headers" className="form-label">
+                    Whitelisted Headers <span className="required">*</span>
+                  </label>
+                  <div className="whitelisted-urls-input-group">
+                    <input
+                      type="text"
+                      id="key-edit-whitelisted-headers"
+                      className="form-input"
+                      value={newWhitelistedHeaderEdit}
+                      onChange={(e) => setNewWhitelistedHeaderEdit(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddWhitelistedHeader(true);
+                        }
+                      }}
+                      placeholder="e.g., Authorization or X-Custom-Header"
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary btn-small"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleAddWhitelistedHeader(true);
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <p className="form-hint">
+                    At least one header is required. Only these headers in a request will be replaced with the API key. This prevents key exfiltration.
+                  </p>
+                  {keyFormData.whitelistedHeaders.length > 0 && (
+                    <div className="whitelisted-urls-list">
+                      {keyFormData.whitelistedHeaders.map((header, index) => (
+                        <div key={index} className="whitelisted-url-item">
+                          <code className="whitelisted-url-value">{header}</code>
+                          <button
+                            type="button"
+                            className="whitelisted-url-remove"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemoveWhitelistedHeader(header, true);
+                            }}
+                            title="Remove header"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
                   <label className="form-label">
                     Rate Limit (optional)
                   </label>
@@ -2057,7 +2478,7 @@ export default function DashboardPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-primary" disabled={updatingKey || keyFormData.whitelistedUrls.length === 0}>
+                  <button type="submit" className="btn-primary" disabled={updatingKey || keyFormData.whitelistedUrls.length === 0 || keyFormData.whitelistedHeaders.length === 0}>
                     {updatingKey ? "Updating..." : "Update Key"}
                   </button>
                 </div>
@@ -2400,6 +2821,105 @@ export default function DashboardPage() {
                     disabled={applyingBulkRateLimit}
                   >
                     {applyingBulkRateLimit ? "Applying..." : "Apply to All Keys"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Bulk Whitelisted Headers Modal */}
+      {
+        showBulkHeadersModal && (
+          <div className={`modal-overlay ${isClosingBulkHeadersModal ? 'closing' : ''}`} onClick={handleCloseBulkHeadersModal}>
+            <div className={`modal-content modal-content-wide ${isClosingBulkHeadersModal ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">Fix Missing Whitelisted Headers</h2>
+                <button
+                  className="modal-close-btn"
+                  onClick={handleCloseBulkHeadersModal}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="modal-form">
+                <p className="form-description">
+                  Configure whitelisted headers for each key below. Headers have been auto-detected where possible based on the key name.
+                </p>
+                <div className="bulk-headers-list">
+                  {keys.filter((key) => !key.whitelistedHeaders || key.whitelistedHeaders.length === 0).map((key) => (
+                    <div key={key.id} className="bulk-headers-key-row">
+                      <div className="bulk-headers-key-name">
+                        <strong>{key.name || "Unnamed Key"}</strong>
+                      </div>
+                      <div className="bulk-headers-key-inputs">
+                        <div className="whitelisted-urls-input-group">
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={bulkHeadersNewInputs[key.id || ""] || ""}
+                            onChange={(e) => setBulkHeadersNewInputs({ ...bulkHeadersNewInputs, [key.id || ""]: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleBulkHeaderAdd(key.id || "");
+                              }
+                            }}
+                            placeholder="e.g., Authorization"
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary btn-small"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleBulkHeaderAdd(key.id || "");
+                            }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                        {(bulkHeadersData[key.id || ""] || []).length > 0 && (
+                          <div className="whitelisted-urls-list">
+                            {(bulkHeadersData[key.id || ""] || []).map((header, index) => (
+                              <div key={index} className="whitelisted-url-item">
+                                <code className="whitelisted-url-value">{header}</code>
+                                <button
+                                  type="button"
+                                  className="whitelisted-url-remove"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleBulkHeaderRemove(key.id || "", header);
+                                  }}
+                                  title="Remove header"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M10.5 3.5L3.5 10.5M3.5 3.5L10.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCloseBulkHeadersModal}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleApplyBulkWhitelistedHeaders}
+                    disabled={applyingBulkHeaders}
+                  >
+                    {applyingBulkHeaders ? "Applying..." : "Apply Headers"}
                   </button>
                 </div>
               </div>
