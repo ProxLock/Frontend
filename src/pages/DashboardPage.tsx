@@ -188,7 +188,7 @@ interface PlayIntegrityConfig {
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
-  const { user } = useUserContext();
+  const { user, hasAcceptedLatestTOS, error: userError } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -439,6 +439,11 @@ export default function DashboardPage() {
       if (!projectId) {
         setError("Project ID is required");
         setLoading(false);
+        return;
+      }
+
+      if (!hasAcceptedLatestTOS && !userError) {
+        // Keep loading true, don't fetch anything if TOS is pending
         return;
       }
 

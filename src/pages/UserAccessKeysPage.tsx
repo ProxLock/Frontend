@@ -5,11 +5,13 @@ import { Link } from "react-router-dom";
 import ErrorToast from "../components/ErrorToast";
 import { copyToClipboard } from "../utils/clipboard";
 import type { UserAccessKey } from "../types";
+import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function UserAccessKeysPage() {
     const { getToken } = useAuth();
+    const { hasAcceptedLatestTOS, error: userError } = useUserContext();
     const { data: plans } = usePlans({ for: 'user' });
     const { data: subscription } = useSubscription({ for: 'user' });
     const [accessKeys, setAccessKeys] = useState<UserAccessKey[]>([]);
@@ -38,6 +40,7 @@ export default function UserAccessKeysPage() {
     const canCreateKey = accessKeyLimit === -1 || accessKeys.length < accessKeyLimit;
 
     const fetchUserData = useCallback(async () => {
+        if (!hasAcceptedLatestTOS && !userError) return;
         try {
             setLoading(true);
             setError(null);
@@ -70,7 +73,7 @@ export default function UserAccessKeysPage() {
         } finally {
             setLoading(false);
         }
-    }, [getToken]);
+    }, [getToken, hasAcceptedLatestTOS, userError]);
 
     const refreshAccessKeys = useCallback(async () => {
         try {

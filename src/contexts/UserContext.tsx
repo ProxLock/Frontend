@@ -10,6 +10,7 @@ interface UserContextType {
     loading: boolean;
     error: string | null;
     refreshUser: () => Promise<void>;
+    hasAcceptedLatestTOS: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -79,8 +80,11 @@ export function UserProvider({ children }: UserProviderProps) {
         }
     }, [fetchUser, clerkUser]);
 
+    const REQUIRED_TOS_EPOCH = Number(import.meta.env.VITE_TOS_EPOCH_DATE) || 0;
+    const hasAcceptedLatestTOS = typeof user?.lastAcceptedTOS === 'number' && user.lastAcceptedTOS >= REQUIRED_TOS_EPOCH;
+
     return (
-        <UserContext.Provider value={{ user, loading, error, refreshUser: fetchUser }}>
+        <UserContext.Provider value={{ user, loading, error, refreshUser: fetchUser, hasAcceptedLatestTOS }}>
             {children}
         </UserContext.Provider>
     );

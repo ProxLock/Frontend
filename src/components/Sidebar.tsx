@@ -14,7 +14,7 @@ export interface SidebarRef {
 
 const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
   const { getToken } = useAuth();
-  const { user } = useUserContext();
+  const { user, hasAcceptedLatestTOS, error: userError } = useUserContext();
   const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +29,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
 
 
   const fetchProjects = useCallback(async () => {
+    if (!hasAcceptedLatestTOS && !userError) return;
     try {
       setLoading(true);
       const token = await getToken({ template: "default" });
@@ -57,7 +58,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, hasAcceptedLatestTOS, userError]);
 
   useEffect(() => {
     fetchProjects();

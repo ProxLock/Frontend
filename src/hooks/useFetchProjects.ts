@@ -1,16 +1,23 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import type { Project } from "../types";
+import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export function useFetchProjects() {
   const { getToken } = useAuth();
+  const { hasAcceptedLatestTOS, error: userError } = useUserContext();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
+    if (!hasAcceptedLatestTOS && !userError) {
+      // Keep loading as true, do not fetch projects or show error if TOS is not accepted yet
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -37,7 +44,7 @@ export function useFetchProjects() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, hasAcceptedLatestTOS, userError]);
 
   return { projects, loading, error, fetchProjects };
 }
