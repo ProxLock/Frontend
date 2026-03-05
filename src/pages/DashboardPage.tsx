@@ -464,7 +464,7 @@ export default function DashboardPage() {
         });
 
         if (!projectRes.ok) {
-          if (projectres.headers.get("Code") === "-1") {
+          if (projectRes.headers.get("Code") === "-1") {
             handleTOSRejection();
             return;
           }
@@ -499,7 +499,7 @@ export default function DashboardPage() {
             const keysData = await keysRes.json();
             setKeys(Array.isArray(keysData) ? keysData : []);
           } else {
-            if (keysres.headers.get("Code") === "-1") {
+            if (keysRes.headers.get("Code") === "-1") {
               handleTOSRejection();
               return;
             }
