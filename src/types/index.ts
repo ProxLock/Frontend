@@ -22,4 +22,5 @@ export interface User {
   currentRequestUsage?: number;
   subscriptionStatus?: string;
   isPayingCustomer?: boolean;
+  lastAcceptedTOS?: number;
 }

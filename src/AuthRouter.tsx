@@ -12,6 +12,7 @@ import UpgradeBanner from "./components/UpgradeBanner";
 import { ProjectsProvider } from "./contexts/ProjectsContext";
 import { UserProvider } from "./contexts/UserContext";
 import { SignupProvider, useSignupContext } from "./contexts/SignupContext";
+import TOSModal from "./components/TOSModal";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -31,6 +32,7 @@ function AppWithSidebar() {
           <Sidebar ref={sidebarRef} />
           <div className="main-content">
             <UpgradeBanner />
+            <TOSModal />
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/create-key" element={<CreateKeyPage />} />
