@@ -11,7 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 export default function UserAccessKeysPage() {
     const { getToken } = useAuth();
-    const { hasAcceptedLatestTOS, error: userError } = useUserContext();
+    const { handleTOSRejection } = useUserContext();
     const { data: plans } = usePlans({ for: 'user' });
     const { data: subscription } = useSubscription({ for: 'user' });
     const [accessKeys, setAccessKeys] = useState<UserAccessKey[]>([]);
@@ -40,7 +40,6 @@ export default function UserAccessKeysPage() {
     const canCreateKey = accessKeyLimit === -1 || accessKeys.length < accessKeyLimit;
 
     const fetchUserData = useCallback(async () => {
-        if (!hasAcceptedLatestTOS && !userError) return;
         try {
             setLoading(true);
             setError(null);
@@ -56,6 +55,10 @@ export default function UserAccessKeysPage() {
             });
 
             if (!res.ok) {
+        if (res.headers.get("Code") === "-1") {
+                    handleTOSRejection();
+                    return;
+                }
                 throw new Error(`Failed to fetch user data: ${res.statusText}`);
             }
 
@@ -73,7 +76,7 @@ export default function UserAccessKeysPage() {
         } finally {
             setLoading(false);
         }
-    }, [getToken, hasAcceptedLatestTOS, userError]);
+    }, [getToken, handleTOSRejection]);
 
     const refreshAccessKeys = useCallback(async () => {
         try {
@@ -94,11 +97,13 @@ export default function UserAccessKeysPage() {
                     typeof accessKey === 'string' ? { key: accessKey, name: '' } : accessKey
                 );
                 setAccessKeys(keys);
+            } else if (res.headers.get("Code") === "-1") {
+                handleTOSRejection();
             }
         } catch (err) {
             console.error("Error refreshing access keys:", err);
         }
-    }, [getToken]);
+    }, [getToken, handleTOSRejection]);
 
     useEffect(() => {
         fetchUserData();

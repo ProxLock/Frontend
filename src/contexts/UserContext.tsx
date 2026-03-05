@@ -10,7 +10,8 @@ interface UserContextType {
     loading: boolean;
     error: string | null;
     refreshUser: () => Promise<void>;
-    hasAcceptedLatestTOS: boolean;
+    needsToAcceptTOS: boolean;
+    handleTOSRejection: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -33,6 +34,7 @@ export function UserProvider({ children }: UserProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [needsToAcceptTOS, setNeedsToAcceptTOS] = useState(false);
 
     const fetchUser = useCallback(async () => {
         try {
@@ -63,6 +65,9 @@ export function UserProvider({ children }: UserProviderProps) {
                 setUser(mergedUser);
                 setError(null);
             } else {
+                if (res.headers.get("Code") === "-1") {
+                    setNeedsToAcceptTOS(true);
+                }
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.message || `Failed to fetch user data: ${res.statusText}`);
             }
@@ -80,11 +85,12 @@ export function UserProvider({ children }: UserProviderProps) {
         }
     }, [fetchUser, clerkUser]);
 
-    const REQUIRED_TOS_EPOCH = Number(import.meta.env.VITE_TOS_EPOCH_DATE) || 0;
-    const hasAcceptedLatestTOS = typeof user?.lastAcceptedTOS === 'number' && user.lastAcceptedTOS >= REQUIRED_TOS_EPOCH;
+    const handleTOSRejection = useCallback(() => {
+        setNeedsToAcceptTOS(true);
+    }, []);
 
     return (
-        <UserContext.Provider value={{ user, loading, error, refreshUser: fetchUser, hasAcceptedLatestTOS }}>
+        <UserContext.Provider value={{ user, loading, error, refreshUser: fetchUser, needsToAcceptTOS, handleTOSRejection }}>
             {children}
         </UserContext.Provider>
     );

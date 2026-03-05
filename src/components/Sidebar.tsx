@@ -14,7 +14,7 @@ export interface SidebarRef {
 
 const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
   const { getToken } = useAuth();
-  const { user, hasAcceptedLatestTOS, error: userError } = useUserContext();
+  const { user, handleTOSRejection } = useUserContext();
   const location = useLocation();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,6 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
 
 
   const fetchProjects = useCallback(async () => {
-    if (!hasAcceptedLatestTOS && !userError) return;
     try {
       setLoading(true);
       const token = await getToken({ template: "default" });
@@ -48,6 +47,10 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
         setProjects(Array.isArray(data) ? data : []);
         setError(null);
       } else {
+        if (res.headers.get("Code") === "-1") {
+          handleTOSRejection();
+          return;
+        }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to fetch projects: ${res.statusText}`);
       }
@@ -58,7 +61,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
     } finally {
       setLoading(false);
     }
-  }, [getToken, hasAcceptedLatestTOS, userError]);
+  }, [getToken, handleTOSRejection]);
 
   useEffect(() => {
     fetchProjects();

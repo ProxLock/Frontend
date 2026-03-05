@@ -4,22 +4,14 @@ import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LANDING_URL = "https://proxlock.dev"; // Adjust if needed
-const REQUIRED_TOS_EPOCH = Number(import.meta.env.VITE_TOS_EPOCH_DATE) || 0; // Epoch in seconds/ms as provided by the user
 
 export default function TOSModal() {
-    const { user, loading, refreshUser } = useUserContext();
+    const { user, loading, refreshUser, needsToAcceptTOS } = useUserContext();
     const { getToken } = useAuth();
     const [isAccepting, setIsAccepting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // If still loading or user has accepted a TOS version newer than or equal to the required one
-    // user.lastAcceptedTOS is compared against REQUIRED_TOS_EPOCH 
-    const hasAcceptedLatestTOS = typeof user?.lastAcceptedTOS === 'number' && user.lastAcceptedTOS >= REQUIRED_TOS_EPOCH;
-    
-    console.log("hasAcceptedLatestTOS", hasAcceptedLatestTOS);
-    console.log("REQUIRED_TOS_EPOCH", REQUIRED_TOS_EPOCH);
-
-    if (loading || !user || hasAcceptedLatestTOS) {
+    if (loading || !user || !needsToAcceptTOS) {
         return null;
     }
 
