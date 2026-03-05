@@ -1,16 +1,19 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import type { Project } from "../types";
+import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export function useFetchProjects() {
   const { getToken } = useAuth();
+  const { handleTOSRejection } = useUserContext();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
+
     try {
       setLoading(true);
       setError(null);
@@ -26,6 +29,10 @@ export function useFetchProjects() {
       });
 
       if (!res.ok) {
+        if (res.headers.get("Code") === "-1") {
+          handleTOSRejection();
+          return;
+        }
         throw new Error(`Failed to fetch projects: ${res.statusText}`);
       }
 
@@ -37,7 +44,7 @@ export function useFetchProjects() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, handleTOSRejection]);
 
   return { projects, loading, error, fetchProjects };
 }

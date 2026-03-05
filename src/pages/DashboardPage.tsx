@@ -188,7 +188,7 @@ interface PlayIntegrityConfig {
 
 export default function DashboardPage() {
   const { getToken } = useAuth();
-  const { user } = useUserContext();
+  const { user, handleTOSRejection } = useUserContext();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -442,6 +442,8 @@ export default function DashboardPage() {
         return;
       }
 
+
+
       try {
         setLoading(true);
         setError(null);
@@ -462,6 +464,10 @@ export default function DashboardPage() {
         });
 
         if (!projectRes.ok) {
+          if (projectRes.headers.get("Code") === "-1") {
+            handleTOSRejection();
+            return;
+          }
           // Show 404 page for any error fetching the project (404, 403, 500, etc.)
           setIsNotFound(true);
           setLoading(false);
@@ -493,6 +499,10 @@ export default function DashboardPage() {
             const keysData = await keysRes.json();
             setKeys(Array.isArray(keysData) ? keysData : []);
           } else {
+            if (keysRes.headers.get("Code") === "-1") {
+              handleTOSRejection();
+              return;
+            }
             // If keys fail to load, just log it but don't fail the page
             console.warn("Failed to fetch keys:", keysRes.statusText);
             setKeys([]);
