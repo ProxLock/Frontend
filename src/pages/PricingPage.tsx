@@ -140,11 +140,11 @@ export default function PricingPage() {
         <p className="pricing-page-subtitle">Choose the plan that fits your needs.</p>
 
         <div className="beta-notice-wrapper">
-          <div className="beta-notice">
+          <div className="beta-notice deep-dish-notice">
             <span className="beta-notice-top">
-              <span className="beta-badge">Beta Pricing</span>
+              <span className="beta-badge deep-dish-badge">🍕 DeepDishSwift Giveaway</span>
             </span>
-            <span className="beta-notice-bottom">Subscribe now to lock in these rates forever. Prices may increase after beta.</span>
+            <span className="beta-notice-bottom deep-dish-text">In the spirit of DeepDishSwift and supporting developers, we are giving away 1 month of ProxLock Pro for free.</span>
           </div>
         </div>
 
