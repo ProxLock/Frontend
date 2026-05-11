@@ -23,6 +23,15 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
   const [isHovered, setIsHovered] = useState(false);
   const [popoutStyle, setPopoutStyle] = useState<React.CSSProperties>({});
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { refreshUser } = useUserContext();
+
+  // Poll the backend every 3s while the popout is actively visible
+  useEffect(() => {
+    if (!isHovered) return;
+    refreshUser();
+    const interval = setInterval(refreshUser, 3000);
+    return () => clearInterval(interval);
+  }, [isHovered, refreshUser]);
 
   const showPopout = () => {
     if (hoverTimeoutRef.current) {
@@ -163,21 +172,6 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
                       />
                     </div>
                   )}
-                </div>
-                <div className="usage-popout-divider" />
-                <div className="usage-popout-stats">
-                  <div className="usage-popout-stat">
-                    <span className="usage-popout-stat-label">Active Connections</span>
-                    <span className="usage-popout-stat-value">{wsUsage.connectionCount.toLocaleString()}</span>
-                  </div>
-                  <div className="usage-popout-stat">
-                    <span className="usage-popout-stat-label">Messages</span>
-                    <span className="usage-popout-stat-value">{wsUsage.messageCount.toLocaleString()}</span>
-                  </div>
-                  <div className="usage-popout-stat">
-                    <span className="usage-popout-stat-label">Bandwidth</span>
-                    <span className="usage-popout-stat-value">{((wsUsage.bytesClientToUpstream + wsUsage.bytesUpstreamToClient) / 1024).toFixed(1)} KB</span>
-                  </div>
                 </div>
               </>
             )}
