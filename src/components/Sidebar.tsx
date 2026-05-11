@@ -2,11 +2,144 @@ import { useAuth } from "@clerk/clerk-react";
 import { UserButton } from "@clerk/clerk-react";
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef } from "react";
+import { createPortal } from "react-dom";
 import logo from "../assets/logo.svg";
 import type { Project } from "../types";
 import { useUserContext } from "../contexts/UserContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Extracted popout component that uses a portal to escape sidebar overflow clipping
+import type { WebSocketUsage } from "../types";
+
+interface UsagePopoutTriggerProps {
+  currentRequestUsage: number | null;
+  requestLimit: number | null;
+  wsUsage: WebSocketUsage | null;
+}
+
+function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: UsagePopoutTriggerProps) {
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [popoutStyle, setPopoutStyle] = useState<React.CSSProperties>({});
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showPopout = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPopoutStyle({
+        position: 'fixed',
+        bottom: `${window.innerHeight - rect.top + 8}px`,
+        left: `${rect.left}px`,
+      });
+    }
+    setIsHovered(true);
+  };
+
+  const hidePopout = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 150);
+  };
+
+  return (
+    <>
+      <div
+        ref={triggerRef}
+        className={`sidebar-usage-trigger ${isHovered ? 'active' : ''}`}
+        onMouseEnter={showPopout}
+        onMouseLeave={hidePopout}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 1v6M8 9v6M1 8h6M9 8h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span>Usage</span>
+      </div>
+      {isHovered && createPortal(
+        <div
+          className="sidebar-usage-popout visible"
+          style={popoutStyle}
+          onMouseEnter={showPopout}
+          onMouseLeave={hidePopout}
+        >
+          <div className="usage-popout-header">
+            <span className="usage-popout-title">Usage This Period</span>
+          </div>
+          <div className="usage-popout-body">
+            {currentRequestUsage !== null && requestLimit !== null && (
+              <div className="usage-popout-item">
+                <div className="usage-popout-item-header">
+                  <span className="usage-popout-item-label">HTTP Requests</span>
+                  <span className="usage-popout-item-value">{currentRequestUsage.toLocaleString()} / {requestLimit === -1 ? "∞" : requestLimit.toLocaleString()}</span>
+                </div>
+                {requestLimit > 0 && (
+                  <div className="usage-popout-bar">
+                    <div
+                      className={`usage-popout-bar-fill ${currentRequestUsage / requestLimit >= 0.9 ? 'critical' : currentRequestUsage / requestLimit >= 0.7 ? 'warning' : ''}`}
+                      style={{ width: `${Math.min((currentRequestUsage / requestLimit) * 100, 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {wsUsage && (
+              <>
+                <div className="usage-popout-item">
+                  <div className="usage-popout-item-header">
+                    <span className="usage-popout-item-label">WS Connection Seconds</span>
+                    <span className="usage-popout-item-value">{wsUsage.connectionSeconds.toLocaleString()} / {wsUsage.connectionSecondLimit === -1 ? "∞" : wsUsage.connectionSecondLimit.toLocaleString()}</span>
+                  </div>
+                  {wsUsage.connectionSecondLimit > 0 && (
+                    <div className="usage-popout-bar">
+                      <div
+                        className={`usage-popout-bar-fill ${wsUsage.connectionSeconds / wsUsage.connectionSecondLimit >= 0.9 ? 'critical' : wsUsage.connectionSeconds / wsUsage.connectionSecondLimit >= 0.7 ? 'warning' : ''}`}
+                        style={{ width: `${Math.min((wsUsage.connectionSeconds / wsUsage.connectionSecondLimit) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="usage-popout-item">
+                  <div className="usage-popout-item-header">
+                    <span className="usage-popout-item-label">WS Message Units</span>
+                    <span className="usage-popout-item-value">{wsUsage.messageUnits.toLocaleString()} / {wsUsage.messageUnitLimit === -1 ? "∞" : wsUsage.messageUnitLimit.toLocaleString()}</span>
+                  </div>
+                  {wsUsage.messageUnitLimit > 0 && (
+                    <div className="usage-popout-bar">
+                      <div
+                        className={`usage-popout-bar-fill ${wsUsage.messageUnits / wsUsage.messageUnitLimit >= 0.9 ? 'critical' : wsUsage.messageUnits / wsUsage.messageUnitLimit >= 0.7 ? 'warning' : ''}`}
+                        style={{ width: `${Math.min((wsUsage.messageUnits / wsUsage.messageUnitLimit) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="usage-popout-divider" />
+                <div className="usage-popout-stats">
+                  <div className="usage-popout-stat">
+                    <span className="usage-popout-stat-label">Active Connections</span>
+                    <span className="usage-popout-stat-value">{wsUsage.connectionCount.toLocaleString()}</span>
+                  </div>
+                  <div className="usage-popout-stat">
+                    <span className="usage-popout-stat-label">Messages</span>
+                    <span className="usage-popout-stat-value">{wsUsage.messageCount.toLocaleString()}</span>
+                  </div>
+                  <div className="usage-popout-stat">
+                    <span className="usage-popout-stat-label">Bandwidth</span>
+                    <span className="usage-popout-stat-value">{((wsUsage.bytesClientToUpstream + wsUsage.bytesUpstreamToClient) / 1024).toFixed(1)} KB</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 export interface SidebarRef {
   refreshProjects: () => void;
@@ -26,6 +159,7 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
   const requestLimit = user?.requestLimit ?? null;
   const currentRequestUsage = user?.currentRequestUsage ?? null;
   const isPayingCustomer = user?.isPayingCustomer ?? false;
+  const wsUsage = user?.currentWebSocketUsage ?? null;
 
 
   const fetchProjects = useCallback(async () => {
@@ -233,11 +367,12 @@ const Sidebar = forwardRef<SidebarRef>((_props, ref) => {
         <div className="sidebar-bottom">
           <div className={`sidebar-user-button ${hasScrollableContent ? 'has-content-above' : ''}`}>
             <UserButton showName={false} />
-            {currentRequestUsage !== null && requestLimit !== null && (
-              <div className="sidebar-usage-container">
-                <span className="sidebar-usage-label">Requests</span>
-                <span className="sidebar-usage-badge">{currentRequestUsage}/{requestLimit === -1 ? "∞" : requestLimit}</span>
-              </div>
+            {((currentRequestUsage !== null && requestLimit !== null) || wsUsage) && (
+              <UsagePopoutTrigger
+                currentRequestUsage={currentRequestUsage}
+                requestLimit={requestLimit}
+                wsUsage={wsUsage}
+              />
             )}
           </div>
 

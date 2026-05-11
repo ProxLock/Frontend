@@ -3045,41 +3045,181 @@ body {
   opacity: 1;
 }
 
-.sidebar-usage-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.sidebar-usage-label {
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.6875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  line-height: 1;
-  text-align: right;
-  width: auto;
-  box-sizing: border-box;
-}
-
-.sidebar-usage-badge {
+/* Usage Trigger Badge */
+.sidebar-usage-trigger {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.375rem;
+  margin-left: auto;
+  flex-shrink: 0;
   background: var(--badge-bg);
   border: 1px solid var(--badge-border);
   color: var(--accent-purple-1);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 0.375rem 0.625rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
+  cursor: default;
+  transition: all 0.2s ease;
   line-height: 1;
-  width: auto;
-  box-sizing: border-box;
+}
+
+.sidebar-usage-trigger:hover {
+  background: var(--btn-secondary-hover-bg);
+  border-color: var(--border-focus);
+  color: var(--accent-purple-3);
+}
+
+.sidebar-usage-trigger svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* Usage Popout Card — rendered via portal into document.body */
+.sidebar-usage-popout {
+  width: 280px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 0 1px rgba(139, 107, 219, 0.2);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.sidebar-usage-popout.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.sidebar-usage-trigger.active {
+  background: var(--btn-secondary-hover-bg);
+  border-color: var(--border-focus);
+  color: var(--accent-purple-3);
+}
+
+/* Popout Header */
+.usage-popout-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.usage-popout-title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-subtle);
+}
+
+/* Popout Body */
+.usage-popout-body {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Individual Usage Item */
+.usage-popout-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.usage-popout-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.usage-popout-item-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.usage-popout-item-value {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-purple-1);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress Bar */
+.usage-popout-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--badge-bg);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.usage-popout-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple-1), var(--accent-purple-2));
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 2px;
+}
+
+.usage-popout-bar-fill.warning {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.usage-popout-bar-fill.critical {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+/* Divider */
+.usage-popout-divider {
+  height: 1px;
+  background: var(--border-divider);
+  margin: 0.125rem 0;
+}
+
+/* Stats Row */
+.usage-popout-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.usage-popout-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-align: center;
+}
+
+.usage-popout-stat-label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.usage-popout-stat-value {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-subscription-section {
@@ -4454,6 +4594,24 @@ body {
   color: var(--text-secondary);
   font-size: 0.875rem;
   line-height: 1.4;
+}
+
+.usage-alert-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.usage-alert-items span {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.usage-alert-cta {
+  margin-top: 0.25rem;
+  color: var(--text-muted) !important;
+  font-style: italic;
 }
 
 @media (max-width: 768px) {

@@ -10,6 +10,17 @@ export interface UserAccessKey {
   name: string;
 }
 
+export interface WebSocketUsage {
+  connectionCount: number;
+  connectionSeconds: number;
+  connectionSecondLimit: number;
+  messageCount: number;
+  messageUnits: number;
+  messageUnitLimit: number;
+  bytesClientToUpstream: number;
+  bytesUpstreamToClient: number;
+}
+
 export interface User {
   id?: string;
   primaryEmailAddress?: {
@@ -20,6 +31,7 @@ export interface User {
   apiKeyLimit?: number;
   requestLimit?: number;
   currentRequestUsage?: number;
+  currentWebSocketUsage?: WebSocketUsage;
   subscriptionStatus?: string;
   isPayingCustomer?: boolean;
   lastAcceptedTOS?: number;

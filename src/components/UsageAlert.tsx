@@ -1,5 +1,6 @@
 import { useAuth } from "@clerk/clerk-react";
 import { useState, useEffect, useCallback } from "react";
+import type { WebSocketUsage } from "../types";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -7,6 +8,7 @@ export default function UsageAlert() {
     const { getToken } = useAuth();
     const [currentRequestUsage, setCurrentRequestUsage] = useState<number | null>(null);
     const [requestLimit, setRequestLimit] = useState<number | null>(null);
+    const [wsUsage, setWsUsage] = useState<WebSocketUsage | null>(null);
 
     const fetchUserData = useCallback(async () => {
         try {
@@ -25,6 +27,7 @@ export default function UsageAlert() {
                 const userData = await res.json();
                 setCurrentRequestUsage(userData.currentRequestUsage ?? null);
                 setRequestLimit(userData.requestLimit ?? null);
+                setWsUsage(userData.currentWebSocketUsage ?? null);
             }
         } catch (err) {
             console.error("Error fetching user data:", err);
@@ -38,19 +41,30 @@ export default function UsageAlert() {
         return () => clearInterval(interval);
     }, [fetchUserData]);
 
-    // Check if we should show the alert (less than 10% remaining)
-    const shouldShowAlert =
+    // Check HTTP request alert
+    const httpNearLimit =
         currentRequestUsage !== null &&
         requestLimit !== null &&
         requestLimit > 0 &&
         (currentRequestUsage / requestLimit) >= 0.9;
 
+    // Check WebSocket connection-seconds alert
+    const wsConnNearLimit =
+        wsUsage !== null &&
+        wsUsage.connectionSecondLimit > 0 &&
+        (wsUsage.connectionSeconds / wsUsage.connectionSecondLimit) >= 0.9;
+
+    // Check WebSocket message-units alert
+    const wsMsgNearLimit =
+        wsUsage !== null &&
+        wsUsage.messageUnitLimit > 0 &&
+        (wsUsage.messageUnits / wsUsage.messageUnitLimit) >= 0.9;
+
+    const shouldShowAlert = httpNearLimit || wsConnNearLimit || wsMsgNearLimit;
+
     if (!shouldShowAlert) {
         return null;
     }
-
-    const remainingRequests = requestLimit - currentRequestUsage;
-    const percentageRemaining = ((requestLimit - currentRequestUsage) / requestLimit) * 100;
 
     return (
         <div className="usage-alert">
@@ -59,15 +73,27 @@ export default function UsageAlert() {
                     <span className="material-symbols-outlined">warning</span>
                 </div>
                 <div className="usage-alert-text">
-                    <strong>Low Request Limit</strong>
-                    <span>
-                        You have {remainingRequests} request{remainingRequests !== 1 ? 's' : ''} remaining ({percentageRemaining.toFixed(0)}% left).
-                        Upgrade your plan to get more requests.
-                    </span>
+                    <strong>Approaching Usage Limits</strong>
+                    <div className="usage-alert-items">
+                        {httpNearLimit && requestLimit !== null && currentRequestUsage !== null && (
+                            <span>
+                                HTTP Requests: {(requestLimit - currentRequestUsage).toLocaleString()} remaining ({((requestLimit - currentRequestUsage) / requestLimit * 100).toFixed(0)}% left)
+                            </span>
+                        )}
+                        {wsConnNearLimit && wsUsage && (
+                            <span>
+                                WS Connection Seconds: {(wsUsage.connectionSecondLimit - wsUsage.connectionSeconds).toLocaleString()} remaining ({((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / wsUsage.connectionSecondLimit * 100).toFixed(0)}% left)
+                            </span>
+                        )}
+                        {wsMsgNearLimit && wsUsage && (
+                            <span>
+                                WS Message Units: {(wsUsage.messageUnitLimit - wsUsage.messageUnits).toLocaleString()} remaining ({((wsUsage.messageUnitLimit - wsUsage.messageUnits) / wsUsage.messageUnitLimit * 100).toFixed(0)}% left)
+                            </span>
+                        )}
+                        <span className="usage-alert-cta">Upgrade your plan to increase limits.</span>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
-
-
