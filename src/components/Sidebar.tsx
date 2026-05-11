@@ -46,6 +46,32 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
     }, 150);
   };
 
+  // Compute the max usage ratio across all metered resources
+  const usageRatios: number[] = [];
+  if (currentRequestUsage !== null && requestLimit !== null && requestLimit > 0) {
+    usageRatios.push(currentRequestUsage / requestLimit);
+  }
+  if (wsUsage) {
+    if (wsUsage.connectionSecondLimit > 0) {
+      usageRatios.push(wsUsage.connectionSeconds / wsUsage.connectionSecondLimit);
+    }
+    if (wsUsage.messageUnitLimit > 0) {
+      usageRatios.push(wsUsage.messageUnits / wsUsage.messageUnitLimit);
+    }
+  }
+  const maxRatio = Math.min(Math.max(...usageRatios, 0), 1);
+  const percentage = Math.round(maxRatio * 100);
+
+  // SVG circle math
+  const size = 28;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (maxRatio * circumference);
+
+  // Color based on usage level
+  const ringColor = maxRatio >= 0.9 ? '#ef4444' : maxRatio >= 0.7 ? '#f59e0b' : 'var(--accent-purple-1)';
+
   return (
     <>
       <div
@@ -54,10 +80,32 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
         onMouseEnter={showPopout}
         onMouseLeave={hidePopout}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M8 1v6M8 9v6M1 8h6M9 8h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-        <span>Usage</span>
+        <div className="usage-ring-wrapper">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="usage-ring-svg">
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke="var(--badge-bg)"
+              strokeWidth={strokeWidth}
+            />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="none"
+              stroke={ringColor}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={dashOffset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+              style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s ease' }}
+            />
+          </svg>
+          <span className="usage-ring-text">{percentage}%</span>
+        </div>
       </div>
       {isHovered && createPortal(
         <div
