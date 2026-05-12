@@ -97,7 +97,7 @@ export default function UpgradeBanner({ showUpgradeButton = true }: UpgradeBanne
             )}
             {wsConnNearLimit && wsUsage && (
               <span>
-                WS Connection Seconds: {(wsUsage.connectionSecondLimit - wsUsage.connectionSeconds).toLocaleString()} remaining ({((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / wsUsage.connectionSecondLimit * 100).toFixed(0)}% left)
+                WS Connection: {Math.round((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / 60).toLocaleString()} min remaining ({((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / wsUsage.connectionSecondLimit * 100).toFixed(0)}% left)
               </span>
             )}
             {wsMsgNearLimit && wsUsage && (

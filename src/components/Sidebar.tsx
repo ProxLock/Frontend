@@ -147,8 +147,8 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
               <>
                 <div className="usage-popout-item">
                   <div className="usage-popout-item-header">
-                    <span className="usage-popout-item-label">WS Connection Seconds</span>
-                    <span className="usage-popout-item-value">{wsUsage.connectionSeconds.toLocaleString()} / {wsUsage.connectionSecondLimit === -1 ? "∞" : wsUsage.connectionSecondLimit.toLocaleString()}</span>
+                    <span className="usage-popout-item-label">WS Connection</span>
+                    <span className="usage-popout-item-value">{Math.round(wsUsage.connectionSeconds / 60).toLocaleString()} min / {wsUsage.connectionSecondLimit === -1 ? "∞" : Math.round(wsUsage.connectionSecondLimit / 60).toLocaleString() + " min"}</span>
                   </div>
                   {wsUsage.connectionSecondLimit > 0 && (
                     <div className="usage-popout-bar">
@@ -161,7 +161,7 @@ function UsagePopoutTrigger({ currentRequestUsage, requestLimit, wsUsage }: Usag
                 </div>
                 <div className="usage-popout-item">
                   <div className="usage-popout-item-header">
-                    <span className="usage-popout-item-label">WS Message Units</span>
+                    <span className="usage-popout-item-label">WS Messages</span>
                     <span className="usage-popout-item-value">{wsUsage.messageUnits.toLocaleString()} / {wsUsage.messageUnitLimit === -1 ? "∞" : wsUsage.messageUnitLimit.toLocaleString()}</span>
                   </div>
                   {wsUsage.messageUnitLimit > 0 && (

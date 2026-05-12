@@ -82,12 +82,12 @@ export default function UsageAlert() {
                         )}
                         {wsConnNearLimit && wsUsage && (
                             <span>
-                                WS Connection Seconds: {(wsUsage.connectionSecondLimit - wsUsage.connectionSeconds).toLocaleString()} remaining ({((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / wsUsage.connectionSecondLimit * 100).toFixed(0)}% left)
+                                WS Connection: {Math.round((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / 60).toLocaleString()} min remaining ({((wsUsage.connectionSecondLimit - wsUsage.connectionSeconds) / wsUsage.connectionSecondLimit * 100).toFixed(0)}% left)
                             </span>
                         )}
                         {wsMsgNearLimit && wsUsage && (
                             <span>
-                                WS Message Units: {(wsUsage.messageUnitLimit - wsUsage.messageUnits).toLocaleString()} remaining ({((wsUsage.messageUnitLimit - wsUsage.messageUnits) / wsUsage.messageUnitLimit * 100).toFixed(0)}% left)
+                                WS Messages: {(wsUsage.messageUnitLimit - wsUsage.messageUnits).toLocaleString()} remaining ({((wsUsage.messageUnitLimit - wsUsage.messageUnits) / wsUsage.messageUnitLimit * 100).toFixed(0)}% left)
                             </span>
                         )}
                         <span className="usage-alert-cta">Upgrade your plan to increase limits.</span>
