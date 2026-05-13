@@ -102,7 +102,7 @@ export default function UpgradeBanner({ showUpgradeButton = true }: UpgradeBanne
             )}
             {wsMsgNearLimit && wsUsage && (
               <span>
-                WS Message Units: {(wsUsage.messageUnitLimit - wsUsage.messageUnits).toLocaleString()} remaining ({((wsUsage.messageUnitLimit - wsUsage.messageUnits) / wsUsage.messageUnitLimit * 100).toFixed(0)}% left)
+                WS Messages: {(wsUsage.messageUnitLimit - wsUsage.messageUnits).toLocaleString()} remaining ({((wsUsage.messageUnitLimit - wsUsage.messageUnits) / wsUsage.messageUnitLimit * 100).toFixed(0)}% left)
               </span>
             )}
             <span className="usage-alert-cta">Upgrade your plan to increase limits.</span>
